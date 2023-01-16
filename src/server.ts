@@ -36,15 +36,18 @@ server.on("connection", function(socket : Socket) {
             if(!run_initial_checks(socket, defragmented)) {
                 continue
             }
+            let selected_class = selector[defragmented.type]
+            let message : Message = new selected_class(socket, defragmented, blockchain_state)
             if(!handshake_completed) {
                 if(defragmented.type != "hello") {
-                    (new ErrorMessage(socket, "INVALID_HANDSHAKE", "Handshake not complete.")).send()
-                    continue
+                    // Only want to terminate with invalid handshake if you get a different valid message before hello
+                    if(message._all_keys_exist(defragmented) || message._verify_message()) {
+                        (new ErrorMessage(socket, "INVALID_HANDSHAKE", "Handshake not complete.")).send(() => socket.destroy())
+                        return
+                    }
                 }
             }
             handshake_completed = true
-            let selected_class = selector[defragmented.type]
-            let message : Message = new selected_class(socket, defragmented, blockchain_state)
             message.run_receive_actions()
         }
     }

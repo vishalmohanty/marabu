@@ -12,7 +12,7 @@ class ErrorMessage {
         this.message = message
     }
 
-    send() {
+    send(callback?) {
         console.log("SENDING ERROR", this.name, this.message)
         this.socket.write(canonicalize(
             {
@@ -20,7 +20,7 @@ class ErrorMessage {
                 "name": this.name,
                 "message": this.message
             }
-        ))
+        ), callback=callback)
     }
     
 }
