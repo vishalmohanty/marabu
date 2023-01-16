@@ -11,8 +11,10 @@ class BlockchainState {
     }
     add_peer(peer : string) {
         let peers = new Set(this.get_peers())
-        peers.add(peer)
-        this.peers.set(Array.from(peers))
+        if (!peers.has(peer)) {
+            peers.add(peer)
+            this.peers.set(Array.from(peers))
+        }
     }
 }
 

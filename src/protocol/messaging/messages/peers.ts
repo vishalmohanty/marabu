@@ -1,6 +1,7 @@
-import { Socket } from "net";
+import { Socket, isIP } from "net";
 import { BlockchainState } from "../../state/blockchain_state";
 import { StateMessage } from "../message_types/state_message";
+import isValidDomain from 'is-valid-domain';
 
 class PeersMessage extends StateMessage {
     type : string = "peers"
@@ -9,10 +10,22 @@ class PeersMessage extends StateMessage {
     _verify_message() : Boolean {
         return true
     }
+
+    _is_valid_peer(peer: string): Boolean {
+        const ip = peer.split(":")[0]
+        if (isIP(ip) || isValidDomain(ip)) {
+            return true
+        }
+        return false
+    }
+
     _update_state() {
-        console.log(`Got peers ${this.obj["peers"]}`)
+        var remoteAddress = this.socket.remoteAddress;
+        console.log(`[peers] Got peers ${this.obj["peers"]} from ${remoteAddress}`)
         for(const peer of this.obj["peers"]) {
-            this.blockchain_state.add_peer(peer)
+            if (this._is_valid_peer(peer)) {
+                this.blockchain_state.add_peer(peer)
+            }
         }
     }
 }

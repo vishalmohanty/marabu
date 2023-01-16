@@ -65,7 +65,7 @@ for(const peer of blockchain_state.get_peers()) {
     })
     client_socket.on("data", function(chunk) {
         for(const defragmented of json_defragmenter.feed(chunk)) {
-            console.log(`Received ${defragmented.type}`)
+            console.log(`[server] Received ${defragmented.type} from ${client_socket.remoteAddress}`)
             if(!run_initial_checks(client_socket, defragmented)) {
                 continue
             }
@@ -78,13 +78,15 @@ for(const peer of blockchain_state.get_peers()) {
                 if(!hello_message._verify_message()) {
                     continue
                 }
-                create_get_peers_message(client_socket, blockchain_state).run_send_actions()
+
                 handshake_completed = true
+                create_get_peers_message(client_socket, blockchain_state).run_send_actions()
                 continue
+            } else {
+                let selected_class = selector[defragmented.type]
+                let message : Message = new selected_class(client_socket, defragmented, blockchain_state)
+                message.run_receive_actions()
             }
-            let selected_class = selector[defragmented.type]
-            let message : Message = new selected_class(client_socket, defragmented, blockchain_state)
-            message.run_receive_actions()
         }
     })
 }
