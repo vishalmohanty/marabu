@@ -42,16 +42,22 @@ abstract class Message {
         console.log(`[message] Sending ${this.constructor.name} message to ${remoteAddress}`)
         this._send()
     }
+    run_receive_verify() : Boolean {
+        if(!this._all_keys_exist(this.obj)) {
+            // Send error message (INVALID_FORMAT)
+            (new ErrorMessage(this.socket, "INVALID_FORMAT", `Keys missing for message type ${this.type}`)).send()
+            return false
+        }
+        if(!this._verify_message()) {
+            return false
+        }
+        return true
+    }
 
     run_receive_actions() {
         var remoteAddress = this.socket.remoteAddress;
         console.log(`[message] Received ${this.constructor.name} message from ${remoteAddress}`)
-        if(!this._all_keys_exist(this.obj)) {
-            // Send error message (INVALID_FORMAT)
-            (new ErrorMessage(this.socket, "INVALID_FORMAT", `Keys missing for message type ${this.type}`)).send()
-            return
-        }
-        if(!this._verify_message()) {
+        if(!this.run_receive_verify()) {
             return
         }
         this._perform_validated_receive()

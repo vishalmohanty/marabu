@@ -41,12 +41,19 @@ server.on("connection", function(socket : Socket) {
             if(!handshake_completed) {
                 if(defragmented.type != "hello") {
                     // Only want to terminate with invalid handshake if you get a different valid message before hello
-                    if(message._all_keys_exist(defragmented) || message._verify_message()) {
+                    // Run full verification, if it fails then we print format/whatever error and continue, otherwise invalid handshake and destroy socket.
+                    if(message.run_receive_verify()) {
                         (new ErrorMessage(socket, "INVALID_HANDSHAKE", "Handshake not complete.")).send(() => socket.destroy())
                         return
+                    } else {
+                        continue
                     }
                 }
             }
+            if(handshake_completed && defragmented.type === "hello") {
+                (new ErrorMessage(socket, "INVALID_HANDSHAKE", "Got a second hello message after handshake was already complete.")).send(() => socket.destroy())
+                return
+            } 
             handshake_completed = true
             message.run_receive_actions()
         }
@@ -75,7 +82,7 @@ for(const peer of blockchain_state.get_peers()) {
                     continue
                 }
                 let hello_message = new HelloMessage(client_socket, defragmented, blockchain_state)
-                if(!hello_message._verify_message()) {
+                if(!hello_message.run_receive_verify()) {
                     continue
                 }
 
@@ -89,4 +96,5 @@ for(const peer of blockchain_state.get_peers()) {
             }
         }
     })
+    client_socket.on("error", ()=>{console.log(`Wasn't able to connect to a client.`)})
 }
