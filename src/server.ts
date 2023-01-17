@@ -31,6 +31,8 @@ function run_initial_checks(socket : Socket, defragmented) : Boolean {
 server.on("connection", function(socket : Socket) {
     let json_defragmenter = new JSONDefragmenter(socket);
     let handshake_completed = false
+    create_hello_message(socket, blockchain_state).run_send_actions()
+    create_get_peers_message(socket, blockchain_state).run_send_actions()
     socket.on('data', function(chunk : Buffer) {
         for(const defragmented of json_defragmenter.feed(chunk)) {
             if(!run_initial_checks(socket, defragmented)) {
@@ -46,6 +48,7 @@ server.on("connection", function(socket : Socket) {
                         (new ErrorMessage(socket, "INVALID_HANDSHAKE", "Handshake not complete.")).send(() => socket.destroy())
                         return
                     } else {
+                        // Error already sent!
                         continue
                     }
                 }
@@ -54,7 +57,12 @@ server.on("connection", function(socket : Socket) {
                 (new ErrorMessage(socket, "INVALID_HANDSHAKE", "Got a second hello message after handshake was already complete.")).send(() => socket.destroy())
                 return
             } 
-            handshake_completed = true
+            if(!handshake_completed && defragmented.type == "hello") {
+                if(message.run_receive_verify()) {
+                    handshake_completed = true
+                    continue
+                }
+            }
             message.run_receive_actions()
         }
     }
@@ -73,6 +81,7 @@ for(const peer of blockchain_state.get_peers()) {
     client_socket.on("data", function(chunk) {
         for(const defragmented of json_defragmenter.feed(chunk)) {
             console.log(`[server] Received ${defragmented.type} from ${client_socket.remoteAddress}`)
+            // Check basic format
             if(!run_initial_checks(client_socket, defragmented)) {
                 continue
             }
@@ -85,10 +94,8 @@ for(const peer of blockchain_state.get_peers()) {
                 if(!hello_message.run_receive_verify()) {
                     continue
                 }
-
-                handshake_completed = true
                 create_get_peers_message(client_socket, blockchain_state).run_send_actions()
-                continue
+                handshake_completed = true
             } else {
                 let selected_class = selector[defragmented.type]
                 let message : Message = new selected_class(client_socket, defragmented, blockchain_state)
