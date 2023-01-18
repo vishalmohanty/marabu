@@ -72,7 +72,7 @@ server.on("connection", function(socket : Socket) {
     }
 )})
 
-for(const peer of blockchain_state.get_peers()) {
+for(const peer of blockchain_state.get_peers().slice(0, 10)) {
     let peers_split : Array<string> = peer.split(":")
     let host_ip : string = peers_split.slice(0, -1).join("")
     let port : number = parseInt(peers_split[peers_split.length-1])

@@ -15,7 +15,12 @@ client.connect({ port: PORT, host: hostIP }, function() {
     // The client can now send data to the server by writing to its socket.
     client.write('{"type": "hello", "agent": "Marabu-Core Client 0.9", "version": "0.9.3"}');
     
-
+    // client.write('{"type": "hello", "version": "0.9.0"}\n');
+    // client.write('{"type"');
+    // setTimeout(() => {
+    //     client.write(': "getpeers"}\n');
+    // }, 5000);
+    
     // setTimeout(() => {
     //         client.write('\n');
     // }, 5000);
