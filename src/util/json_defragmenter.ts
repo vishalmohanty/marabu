@@ -21,6 +21,7 @@ class JSONDefragmenter {
     *feed(buf : Buffer) {
         for(const val of buf) {
             if(val == 0x0A) {
+                clearTimeout(this.timeoutID);
                 try {
                     let obj = JSON.parse(this.buffer)
                     console.log(`[received] [${this.socket.socket.remoteAddress}:${this.socket.socket.remotePort}] ${canonicalize(obj)}`)
@@ -30,7 +31,6 @@ class JSONDefragmenter {
                 }
                 this.buffer = ""
                 // Reset the timer when we get any fully formed message (terminated by '\n')
-                clearTimeout(this.timeoutID);
             } else {
                 if(this.buffer == "") {
                     // Start a timer on receiving the first fragment. On timing out, close connection
