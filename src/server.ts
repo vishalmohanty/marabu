@@ -22,8 +22,7 @@ function run_initial_checks(socket : MarabuSocket, defragmented) : Boolean {
     } 
     let selected_class = selector[defragmented.type]
     if(selected_class == undefined) {
-        // Sending this error message causes a termination in connection
-        // (new ErrorMessage(socket, "INVALID_FORMAT", `Invalid message type ${defragmented.type}`)).send()
+        (new ErrorMessage(socket, "INVALID_FORMAT", `Invalid message type ${defragmented.type}`)).send()
         return false
     }
     return true
@@ -56,6 +55,8 @@ server.on("connection", function(socket : Socket) {
                 }
             }
             if(marabu_socket.handshake_completed && defragmented.type === "hello") {
+                // Very very hacky, TODO: change to have override instead (or better)
+                marabu_socket.handshake_completed = false;
                 (new ErrorMessage(marabu_socket, "INVALID_HANDSHAKE", "Got a second hello message after handshake was already complete.")).send()
                 return
             } 

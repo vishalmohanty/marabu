@@ -25,6 +25,7 @@ class JSONDefragmenter {
                 try {
                     let obj = JSON.parse(this.buffer)
                     console.log(`[received] [${this.socket.socket.remoteAddress}:${this.socket.socket.remotePort}] ${canonicalize(obj)}`)
+                    this.buffer = ""    // Need to do this here in case we don't get to the next one.
                     yield obj
                 } catch(error) {
                     (new ErrorMessage(this.socket, "INVALID_FORMAT", "Not parsable as json.")).send()
@@ -32,7 +33,7 @@ class JSONDefragmenter {
                 this.buffer = ""
                 // Reset the timer when we get any fully formed message (terminated by '\n')
             } else {
-                if(this.buffer == "") {
+                if(this.buffer === "") {
                     // Start a timer on receiving the first fragment. On timing out, close connection
                     this.timeoutID = setTimeout(() => {
                         (new ErrorMessage(this.socket, "INVALID_FORMAT", "Timed out waiting to receive a valid message.")).send()

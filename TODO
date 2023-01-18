@@ -1,1 +1,3 @@
-- Deal with invalid IP (causes a crash as of right now)
+- 1) INVALID_HANDSHAKE is not exiting server.
+- 2) Pressing enter continuously is simply retriggering the same message.
+- 3) Timer error popping up when it shouldn't
