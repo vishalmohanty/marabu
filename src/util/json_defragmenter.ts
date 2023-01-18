@@ -1,15 +1,17 @@
+import { canonicalize } from "json-canonicalize";
 import { Socket } from "net";
 import { ErrorMessage } from "../protocol/messaging/messages/error";
+import { MarabuSocket } from "./marabu_socket";
 
 const TIMEOUT : number = 10000 // Timeout to receive a valid message
 
 class JSONDefragmenter {
     buffer : string;
-    socket : Socket;
+    socket : MarabuSocket;
     counter : number;
     timeoutID : NodeJS.Timeout;
 
-    constructor(socket : Socket) {
+    constructor(socket : MarabuSocket) {
         this.buffer = ""
         this.socket = socket
         // Counter helps us keep track of the fragment of message. 
@@ -21,7 +23,9 @@ class JSONDefragmenter {
         for(const val of buf) {
             if(val == 0x0A) {
                 try {
-                    yield JSON.parse(this.buffer)
+                    let obj = JSON.parse(this.buffer)
+                    console.log(`[received] [${this.socket.socket.remoteAddress}:${this.socket.socket.remotePort}] ${canonicalize(obj)}`)
+                    yield obj
                 } catch(error) {
                     (new ErrorMessage(this.socket, "INVALID_FORMAT", "Not parsable as json.")).send()
                 }
@@ -34,13 +38,7 @@ class JSONDefragmenter {
                     this.counter += 1
                     // Start a timer on receiving the first fragment. On timing out, close connection
                     this.timeoutID = setTimeout(() => {
-                        (
-                            new ErrorMessage(this.socket, "INVALID_FORMAT", "Timed out waiting to receive a valid message.")).send(() => {
-                                console.log(`Timed out waiting to receive a valid message. Terminated connection with ${this.socket.remoteAddress}`)
-                                this.socket.destroy()
-                                return null
-                            }
-                        )
+                        (new ErrorMessage(this.socket, "INVALID_FORMAT", "Timed out waiting to receive a valid message.")).send()
                     }, TIMEOUT);
                 }
                 this.buffer += String.fromCharCode(val)

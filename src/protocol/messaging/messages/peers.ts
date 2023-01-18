@@ -2,6 +2,7 @@ import { Socket, isIP } from "net";
 import { BlockchainState } from "../../state/blockchain_state";
 import { StateMessage } from "../message_types/state_message";
 import isValidDomain from 'is-valid-domain';
+import {MarabuSocket} from "../../../util/marabu_socket"
 
 class PeersMessage extends StateMessage {
     type : string = "peers"
@@ -20,8 +21,6 @@ class PeersMessage extends StateMessage {
     }
 
     _update_state() {
-        var remoteAddress = this.socket.remoteAddress;
-        console.log(`[peers] Got peers ${this.obj["peers"]} from ${remoteAddress}`)
         for(const peer of this.obj["peers"]) {
             if (this._is_valid_peer(peer)) {
                 this.blockchain_state.add_peer(peer)
@@ -30,7 +29,7 @@ class PeersMessage extends StateMessage {
     }
 }
 
-function create_peers_message(socket : Socket, blockchain_state : BlockchainState, peers : Array<string>) {
+function create_peers_message(socket : MarabuSocket, blockchain_state : BlockchainState, peers : Array<string>) {
     return new PeersMessage(socket, {"type": "peers", "peers": peers}, blockchain_state)
 }
 

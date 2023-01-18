@@ -1,16 +1,16 @@
-import {Socket} from "net";
+import {MarabuSocket} from "../../../util/marabu_socket";
 import {canonicalize} from "json-canonicalize"
 import {ErrorMessage} from "../messages/error"
 import {BlockchainState} from "../../state/blockchain_state"
 
 abstract class Message {
     required_keys : Array<string>
-    socket : Socket
+    socket : MarabuSocket
     obj : any
     abstract type : string
     blockchain_state : BlockchainState
 
-    constructor(socket : Socket, obj : any, blockchain_state : BlockchainState) {
+    constructor(socket : MarabuSocket, obj : any, blockchain_state : BlockchainState) {
         this.socket = socket
         this.obj = obj
         this.blockchain_state = blockchain_state
@@ -30,7 +30,9 @@ abstract class Message {
      */
     _send() {
         // Need newline to trigger delimetter on server side
-        this.socket.write(canonicalize(this.obj)+"\n")
+        let canonicalized_string : string = canonicalize(this.obj)
+        console.log(`[sending] [${this.socket.socket.remoteAddress}:${this.socket.socket.remotePort}] ${canonicalized_string}`)
+        this.socket.send(canonicalized_string+"\n")
     }
 
     /**
@@ -38,8 +40,6 @@ abstract class Message {
      * to send message over socket
      */
     run_send_actions() {
-        var remoteAddress = this.socket.remoteAddress;
-        console.log(`[message] Sending ${this.constructor.name} message to ${remoteAddress}`)
         this._send()
     }
     run_receive_verify() : Boolean {
@@ -55,8 +55,6 @@ abstract class Message {
     }
 
     run_receive_actions() {
-        var remoteAddress = this.socket.remoteAddress;
-        console.log(`[message] Received ${this.constructor.name} message from ${remoteAddress}`)
         if(!this.run_receive_verify()) {
             return
         }

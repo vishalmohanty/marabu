@@ -2,6 +2,7 @@ import { Socket } from "net";
 import { BlockchainState } from "../../state/blockchain_state";
 import { ReplyMessage } from "../message_types/reply_message";
 import {create_peers_message} from "./peers"
+import {MarabuSocket} from "../../../util/marabu_socket"
 
 class GetPeersMessage extends ReplyMessage {
     type : string = "getpeers"
@@ -17,7 +18,7 @@ class GetPeersMessage extends ReplyMessage {
 
 }
 
-function create_get_peers_message(socket : Socket, blockchain_state : BlockchainState) {
+function create_get_peers_message(socket : MarabuSocket, blockchain_state : BlockchainState) {
     return new GetPeersMessage(socket, {"type": "getpeers"}, blockchain_state)
 }
 
