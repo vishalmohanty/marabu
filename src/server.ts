@@ -31,6 +31,7 @@ function run_initial_checks(socket : MarabuSocket, defragmented) : Boolean {
 server.on("connection", function(socket : Socket) {
     let marabu_socket = new MarabuSocket(socket)
     let json_defragmenter = new JSONDefragmenter(marabu_socket);
+    let handshake_completed : Boolean = false;
     create_hello_message(marabu_socket, blockchain_state).run_send_actions()
     create_get_peers_message(marabu_socket, blockchain_state).run_send_actions()
     marabu_socket.socket.on('data', function(chunk : Buffer) {
@@ -41,7 +42,7 @@ server.on("connection", function(socket : Socket) {
             // TODO: Indicate this is Message type
             let selected_class = selector[defragmented.type]
             let message : Message = new selected_class(marabu_socket, defragmented, blockchain_state)
-            if(!marabu_socket.handshake_completed) {
+            if(!handshake_completed) {
                 if(defragmented.type != "hello") {
                     // Only want to terminate with invalid handshake if you get a different valid message before hello
                     // Run full verification, if it fails then we print format/whatever error and continue, otherwise invalid handshake and destroy socket.
@@ -54,15 +55,15 @@ server.on("connection", function(socket : Socket) {
                     }
                 }
             }
-            if(marabu_socket.handshake_completed && defragmented.type === "hello") {
+            if(handshake_completed && defragmented.type === "hello") {
                 // Very very hacky, TODO: change to have override instead (or better)
-                marabu_socket.handshake_completed = false;
+                handshake_completed = false;
                 (new ErrorMessage(marabu_socket, "INVALID_HANDSHAKE", "Got a second hello message after handshake was already complete.")).send()
                 return
             } 
-            if(!marabu_socket.handshake_completed && defragmented.type == "hello") {
+            if(!handshake_completed && defragmented.type == "hello") {
                 if(message.run_receive_verify()) {
-                    marabu_socket.handshake_completed = true
+                    handshake_completed = true
                 }
                 continue
             }
@@ -78,6 +79,7 @@ for(const peer of blockchain_state.get_peers()) {
     let client_socket : Socket = new Socket()
     let marabu_client_socket = new MarabuSocket(client_socket)
     let json_defragmenter = new JSONDefragmenter(marabu_client_socket);
+    let handshake_completed : Boolean = false;
     marabu_client_socket.socket.connect({port : port, host : host_ip}, function() {
         create_hello_message(marabu_client_socket, blockchain_state).run_send_actions()
     })
@@ -87,7 +89,7 @@ for(const peer of blockchain_state.get_peers()) {
             if(!run_initial_checks(marabu_client_socket, defragmented)) {
                 continue
             }
-            if(!marabu_client_socket.handshake_completed) {
+            if(!handshake_completed) {
                 if(defragmented.type != "hello") {
                     (new ErrorMessage(marabu_client_socket, "INVALID_HANDSHAKE", "Handshake not complete.")).send()
                     continue
@@ -97,7 +99,7 @@ for(const peer of blockchain_state.get_peers()) {
                     continue
                 }
                 create_get_peers_message(marabu_client_socket, blockchain_state).run_send_actions()
-                marabu_client_socket.handshake_completed = true
+                handshake_completed = true
             } else {
                 // TODO: Same as above for message type
                 let selected_class = selector[defragmented.type]

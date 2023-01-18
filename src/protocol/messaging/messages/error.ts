@@ -22,7 +22,12 @@ class ErrorMessage {
             }
         )
         console.log(`[sending] [${this.socket.socket.remoteAddress}:${this.socket.socket.remotePort}] ${canonicalized_string}`)
-        this.socket.send(canonicalized_string, true)
+        let disconnect = false
+        if(this.name === "INVALID_HANDSHAKE" || this.name === "INVALID_FORMAT")
+        {
+            disconnect = true
+        }
+        this.socket.send(canonicalized_string, disconnect)
     }
     
 }

@@ -28,6 +28,7 @@ class JSONDefragmenter {
                     this.buffer = ""    // Need to do this here in case we don't get to the next one.
                     yield obj
                 } catch(error) {
+                    console.log(`[received] [${this.socket.socket.remoteAddress}:${this.socket.socket.remotePort}] Invalid message: ${this.buffer}`);
                     (new ErrorMessage(this.socket, "INVALID_FORMAT", "Not parsable as json.")).send()
                 }
                 this.buffer = ""
