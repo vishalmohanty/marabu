@@ -16,7 +16,6 @@ class JSONDefragmenter {
         this.socket = socket
         // Counter helps us keep track of the fragment of message. 
         // Timer is started only on the first character of a new message
-        this.counter = 0
         this.timeoutID = null
     }
     *feed(buf : Buffer) {
@@ -32,10 +31,8 @@ class JSONDefragmenter {
                 this.buffer = ""
                 // Reset the timer when we get any fully formed message (terminated by '\n')
                 clearTimeout(this.timeoutID);
-                this.counter = 0;
             } else {
-                if (this.counter == 0) {
-                    this.counter += 1
+                if(this.buffer == "") {
                     // Start a timer on receiving the first fragment. On timing out, close connection
                     this.timeoutID = setTimeout(() => {
                         (new ErrorMessage(this.socket, "INVALID_FORMAT", "Timed out waiting to receive a valid message.")).send()
