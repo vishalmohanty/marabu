@@ -3,7 +3,7 @@ import { MarabuObject } from "./types"
 import {exists_in_db, get_from_db} from "../../../../util/database"
 import {ErrorMessage} from "../error"
 import {TransactionCoinbase} from "./transaction_coinbase"
-import * as ed25519 from "noble-ed25519"
+import * as ed25519 from "@noble/ed25519"
 import { canonicalize } from "json-canonicalize"
 
 interface TransactionPayment {
@@ -36,8 +36,8 @@ class TransactionPaymentObject extends MarabuObject {
             // Check signature validity
             let signature = input.sig
             let pk = output_transaction.outputs[input.outpoint.index].pubkey
-            if(!await ed25519.verify(signature, to_sign_message, pk)) {
-                (new ErrorMessage(this.socket, "INVALID_TX_SIGNATURE", `Failed to validate with public key from ${txid}, index ${input.outpoint.index}`)).send()
+            if(!await ed25519.verify(signature, Uint8Array.from(Buffer.from(to_sign_message)), pk)) {
+                (new ErrorMessage(this.socket, "INVALID_TX_SIGNATURE", `Failed to validate with public key from ${txid}, index ${input.outpoint.index}: ${pk}`)).send()
                 return false 
             }
             input_sum += output_transaction.outputs[input.outpoint.index].value

@@ -21,7 +21,7 @@ class ObjectMessage extends Message {
             return false
         }
         if(object_selector(this.obj.object) == undefined) {
-            (new ErrorMessage(this.socket, "INVALID_FORMAT", `Can't parse as any object`)).send()
+            (new ErrorMessage(this.socket, "UNKNOWN_OBJECT", `Can't parse as any object`)).send()
             return false
         }
         return true
