@@ -4,6 +4,7 @@ import {MarabuSocket} from "../../../util/marabu_socket"
 import { Message } from "../message_types/message";
 import { exists_in_db, get_from_db } from "../../../util/database";
 import { ErrorMessage } from "./error";
+import { create_object_message } from "./object";
 
 interface GetObject {
     type : string,
@@ -23,8 +24,8 @@ class GetObjectMessage extends Message {
             (new ErrorMessage(this.socket, "UNFINDABLE_OBJECT", "Object not found")).send()
             return false
         }
-        let s : string = await get_from_db(this.obj.objectid)
-        create_get_object_message(this.socket, this.blockchain_state, JSON.parse(s)).run_send_actions()
+        let s = await get_from_db(this.obj.objectid)
+        create_object_message(this.socket, this.blockchain_state, s).run_send_actions()
     }
 
 }
