@@ -1,14 +1,20 @@
-import { Socket } from "net";
 import { BlockchainState } from "../../state/blockchain_state";
-import { ReplyMessage } from "../message_types/reply_message";
 import { ErrorMessage } from "./error"
 import {MarabuSocket} from "../../../util/marabu_socket"
+import { Message } from "../message_types/message";
 
 let NAME = "DEFINITELY_HONEST"
 
-class HelloMessage extends ReplyMessage {
+interface HelloObject {
+    type: string,
+    version : string,
+    agent? : string
+}
+
+class HelloMessage extends Message {
     type : string = "hello"
     required_keys : Array<string> = ["type", "version"]
+    obj : HelloObject
     _verify_message(): Boolean {
         // Checks 
         let version = this.obj.version;
@@ -18,7 +24,7 @@ class HelloMessage extends ReplyMessage {
         }
         return true
     }
-    _reply() {
+    async _perform_validated_receive() {
         create_hello_message(this.socket, this.blockchain_state).run_send_actions()
     }
 }

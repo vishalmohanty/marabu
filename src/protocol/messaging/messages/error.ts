@@ -29,7 +29,6 @@ class ErrorMessage {
         }
         this.socket.send(canonicalized_string+"\n", disconnect)
     }
-    
 }
 
 export {ErrorMessage}

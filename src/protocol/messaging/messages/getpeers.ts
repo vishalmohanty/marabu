@@ -1,17 +1,21 @@
-import { Socket } from "net";
 import { BlockchainState } from "../../state/blockchain_state";
-import { ReplyMessage } from "../message_types/reply_message";
 import {create_peers_message} from "./peers"
 import {MarabuSocket} from "../../../util/marabu_socket"
+import { Message } from "../message_types/message";
 
-class GetPeersMessage extends ReplyMessage {
+interface GetPeersObject {
+    type : string
+}
+
+class GetPeersMessage extends Message {
     type : string = "getpeers"
     required_keys : Array<string> = ["type"]
+    obj : GetPeersObject
 
     _verify_message(): Boolean {
         return true
     }
-    _reply() {
+    async _perform_validated_receive() {
         let peers = this.blockchain_state.get_peers()
         create_peers_message(this.socket, this.blockchain_state, peers).run_send_actions()
     }

@@ -41,7 +41,7 @@ server.on("connection", function(socket : Socket) {
             }
             // TODO: Indicate this is Message type
             let selected_class = selector[defragmented.type]
-            let message : Message = new selected_class(marabu_socket, defragmented, blockchain_state)
+            let message = new selected_class(marabu_socket, defragmented, blockchain_state)
             if(!handshake_completed) {
                 if(defragmented.type != "hello") {
                     // Only want to terminate with invalid handshake if you get a different valid message before hello

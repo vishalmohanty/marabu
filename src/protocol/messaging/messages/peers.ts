@@ -1,12 +1,19 @@
-import { Socket, isIP } from "net";
+import { isIP } from "net";
 import { BlockchainState } from "../../state/blockchain_state";
-import { StateMessage } from "../message_types/state_message";
 import isValidDomain from 'is-valid-domain';
 import {MarabuSocket} from "../../../util/marabu_socket"
+import { Message } from "../message_types/message";
 
-class PeersMessage extends StateMessage {
+interface PeersObject {
+    type: string,
+    peers : Array<string>,
+}
+
+class PeersMessage extends Message {
     type : string = "peers"
     required_keys : Array<string> = ["type", "peers"]
+    obj : PeersObject;
+
 
     _verify_message() : Boolean {
         return true
@@ -20,7 +27,7 @@ class PeersMessage extends StateMessage {
         return false
     }
 
-    _update_state() {
+    async _perform_validated_receive() {
         for(const peer of this.obj["peers"]) {
             if (this._is_valid_peer(peer)) {
                 this.blockchain_state.add_peer(peer)
