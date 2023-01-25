@@ -25,7 +25,7 @@ class TransactionPaymentObject extends MarabuObject {
             let txid : string = input.outpoint.txid
             // Check to see if input transaction point back to a valid transaction
             if(!await exists_in_db(txid)) {
-                (new ErrorMessage(this.socket, "UNFINDABLE_OBJECT", `The transaction id ${txid} could not be found`)).send()
+                (new ErrorMessage(this.socket, "UNKNOWN_OBJECT", `The transaction id ${txid} could not be found`)).send()
                 return false
             }
             let output_transaction : TransactionPayment | TransactionCoinbase = await get_from_db(txid)
