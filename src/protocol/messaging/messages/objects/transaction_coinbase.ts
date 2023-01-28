@@ -14,7 +14,7 @@ class TransactionCoinbaseObject extends MarabuObject {
     }
 
     static isThisObject(obj : any) : obj is TransactionCoinbase {
-        return obj && (typeof obj.type == "string") && (typeof obj.height == "number") && (obj.height >= 0) && obj.outputs.every((output) => isTransactionOutput(output))
+        return obj && (typeof obj.type == "string") && (obj.type == "transaction") && (typeof obj.height == "number") && (obj.height >= 0) && obj.outputs.every((output) => isTransactionOutput(output))
     }
 }
 

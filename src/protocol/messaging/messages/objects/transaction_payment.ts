@@ -52,7 +52,7 @@ class TransactionPaymentObject extends MarabuObject {
     }
 
     static isThisObject(obj : any) : obj is TransactionPayment {
-        return obj && (typeof obj.type == "string") && Array.isArray(obj.inputs) && obj.inputs.every((inp) => isTransactionInput(inp)) && Array.isArray(obj.outputs) && obj.outputs.every((output) => isTransactionOutput(output))
+        return obj && (typeof obj.type == "string") && (obj.type == "transaction") && Array.isArray(obj.inputs) && obj.inputs.every((inp) => isTransactionInput(inp)) && Array.isArray(obj.outputs) && obj.outputs.every((output) => isTransactionOutput(output))
     }
 }
 
