@@ -4,13 +4,23 @@ function is_all_hex(s : string) {
     return Array.from(s).every((val) => hex_chars.has(val))
 }
 
+function isValidAscii(s: any) : boolean {
+    return (typeof s == "string") && (s.length == 128)
+}
+
+// Transaction ID, block ID, nonce are all 32-byte hexadecimals
+function isValidId(s: any) : boolean {
+    return (typeof s == "string") && (s.length == 64) && is_all_hex(s)
+}
+
 interface TransactionPointer {
     txid : string,
     index : number
 }
+
 // User-defined type guard
 function isTransactionPointer(obj : any) : obj is TransactionPointer {
-    return obj && (typeof obj.txid == "string") && (obj.txid.length == 64) && (is_all_hex(obj.txid)) && (typeof obj.index == "number") && (obj.index >= 0)
+    return obj && isValidId(obj.txid) && (typeof obj.index == "number") && (obj.index >= 0)
 }
 
 interface TransactionInput {
@@ -31,4 +41,4 @@ function isTransactionOutput(obj : any) : obj is TransactionInput {
     return obj && (typeof obj.pubkey == "string") && (obj.pubkey.length == 64) && (is_all_hex(obj.pubkey)) && (typeof obj.value == "number") && (obj.value >= 0)
 }
 
-export {TransactionPointer, isTransactionPointer, TransactionInput, isTransactionInput, TransactionOutput, isTransactionOutput}
+export {isValidAscii, isValidId, TransactionPointer, isTransactionPointer, TransactionInput, isTransactionInput, TransactionOutput, isTransactionOutput}

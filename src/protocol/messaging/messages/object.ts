@@ -29,7 +29,7 @@ class ObjectMessage extends Message {
     async _perform_validated_receive() {
         // Object lifecycle
         let selected_class = object_selector(this.obj.object)
-        let marabu_object = new selected_class(this.socket, this.obj.object)
+        let marabu_object = new selected_class(this.socket, this.obj.object, this.blockchain_state)
         let added : Boolean = await marabu_object.run_receive()
         if(added) {
             gossip(create_i_have_object_message, this.blockchain_state, marabu_object.get_object_id())

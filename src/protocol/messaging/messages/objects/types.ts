@@ -2,16 +2,22 @@ import {canonicalize} from "json-canonicalize"
 import {createHash} from "blake2"
 import {exists_in_db, put_in_db, get_from_db} from "../../../../util/database"
 import { MarabuSocket } from "../../../../util/marabu_socket"
+import { BlockchainState } from "../../../state/blockchain_state"
 
 
 abstract class MarabuObject {
     obj : any
     socket : MarabuSocket
+    blockchain_state : BlockchainState
+
     constructor(socket : MarabuSocket, obj : any) {
         this.socket = socket
         this.obj = obj
+        this.blockchain_state = this.blockchain_state
     }
+
     abstract _verify() : Promise<Boolean>;
+
     get_object_id() : string {
         let raw_object_string : string = canonicalize(this.obj)
         console.log(raw_object_string)
@@ -20,6 +26,7 @@ abstract class MarabuObject {
         let digest : string = h.digest("hex")
         return digest
     }
+    
     async add_object() : Promise<Boolean> {
         let digest = this.get_object_id()
         let already_stored = await exists_in_db(digest)
