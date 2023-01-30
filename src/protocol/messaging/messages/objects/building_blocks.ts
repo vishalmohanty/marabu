@@ -5,7 +5,7 @@ function is_all_hex(s : string) {
 }
 
 function isValidAscii(s: any) : boolean {
-    return (typeof s == "string") && (s.length == 128)
+    return (typeof s == "string") && (s.length <= 128)
 }
 
 // Transaction ID, block ID, nonce are all 32-byte hexadecimals

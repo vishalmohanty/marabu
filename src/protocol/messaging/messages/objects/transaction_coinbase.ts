@@ -1,5 +1,5 @@
 import {TransactionOutput, isTransactionInput, isTransactionOutput} from "./building_blocks"
-import { MarabuObject } from "./types"
+import { MarabuObject } from "./object_type"
 
 interface TransactionCoinbase {
     type : string,

@@ -1,4 +1,4 @@
-import { MarabuObject } from "./types";
+import { MarabuObject } from "./object_type";
 import { TransactionPaymentObject } from "./transaction_payment"
 import { TransactionCoinbaseObject } from "./transaction_coinbase";
 import { BlockObject } from "./block"

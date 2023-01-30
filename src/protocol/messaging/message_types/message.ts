@@ -54,7 +54,7 @@ abstract class Message {
         return true
     }
 
-    run_receive_actions() {
+    async run_receive_actions() {
         if(!this.run_receive_verify()) {
             return
         }

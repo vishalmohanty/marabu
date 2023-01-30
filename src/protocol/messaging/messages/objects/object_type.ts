@@ -42,14 +42,23 @@ abstract class MarabuObject {
         return false
     }
 
+    update_state() {
+        // Defaults to doing nothing
+    }
+
     // Returns true if you should gossip ihaveobject
     async run_receive() : Promise<Boolean> {
+        if(await exists_in_db(this.get_object_id())) {
+            // Already dealt with, no need to process again
+            return false
+        }
         if(!await this._verify()) {
             return false
         }
         if(!await this.add_object()) {
             return false
         }
+        await this.update_state()
         return true
     }
 }
