@@ -5,6 +5,7 @@ import { Message } from "../message_types/message";
 import { ErrorMessage } from "./error"
 import { create_i_have_object_message } from "./ihaveobject";
 import {object_selector} from "./objects/object_selector"
+import { MarabuObject } from "./objects/object_type";
 
 interface ObjectObject {
     type: string,
@@ -32,7 +33,7 @@ class ObjectMessage extends Message {
         let marabu_object = new selected_class(this.socket, this.obj.object, this.blockchain_state)
         let added : Boolean = await marabu_object.run_receive()
         if(added) {
-            gossip(create_i_have_object_message, this.blockchain_state, marabu_object.get_object_id())
+            gossip(create_i_have_object_message, this.blockchain_state, MarabuObject.get_object_id(this.obj))
         }
     }
 }

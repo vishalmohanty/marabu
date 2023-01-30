@@ -27,7 +27,7 @@ class BlockObject extends MarabuObject {
     obj : Block
 
     async _verify() : Promise<Boolean> {
-        let blockId = this.get_object_id()
+        let blockId = MarabuObject.get_object_id(this.obj)
 
         // Check proof-of-work. If not, send "INVALID_BLOCK_POW"
         if (blockId >= this.obj.T) {
@@ -35,7 +35,7 @@ class BlockObject extends MarabuObject {
         }
 
         // Hardcoded genesis
-        if (this.obj.previd != "0000000052a0e645eca917ae1c196e0d0a4fb756747f29ef52594d68484bb5e2" && !await exists_in_utxo_db(this.obj.previd)) {
+        if (!await exists_in_utxo_db(this.obj.previd)) {
             (new ErrorMessage(this.socket, "UNFINDABLE_OBJECT", `Temporary for PSET 3, couldn't locate previous block.`)).send()
             return false
         }
@@ -121,18 +121,19 @@ class BlockObject extends MarabuObject {
     }
 
     static isThisObject(obj : any) : obj is Block {
-        console.log(obj.txids.every((txid) => isValidId(txid)), isValidId(obj.nonce), isValidId(obj.previd), obj.T === "00000000abc00000000000000000000000000000000000000000000000000000", isValidAscii(obj.miner), isValidAscii(obj.note), obj.studentids == undefined)
-        return obj &&
-        Array.isArray(obj.txids) &&
-        obj.txids.every((txid) => isValidId(txid)) &&
-        isValidId(obj.nonce) && 
-        isValidId(obj.previd) && 
-        obj.T === "00000000abc00000000000000000000000000000000000000000000000000000" &&
-        isValidAscii(obj.miner) &&
-        isValidAscii(obj.note)
-        &&
-        ((obj.studentids == undefined) ||
-        (Array.isArray(obj.studentids) && obj.studentids.every((id) => isValidAscii(id))))
+        // is genesis OR valid block
+        return obj && (MarabuObject.get_object_id(obj) == "0000000052a0e645eca917ae1c196e0d0a4fb756747f29ef52594d68484bb5e2" || (
+            Array.isArray(obj.txids) &&
+            obj.txids.every((txid) => isValidId(txid)) &&
+            isValidId(obj.nonce) && 
+            isValidId(obj.previd) && 
+            obj.T === "00000000abc00000000000000000000000000000000000000000000000000000" &&
+            isValidAscii(obj.miner) &&
+            isValidAscii(obj.note)
+            &&
+            ((obj.studentids == undefined) ||
+            (Array.isArray(obj.studentids) && obj.studentids.every((id) => isValidAscii(id))))
+        ))
     }
 }
 

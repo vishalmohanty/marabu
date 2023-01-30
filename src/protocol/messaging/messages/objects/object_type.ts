@@ -18,8 +18,8 @@ abstract class MarabuObject {
 
     abstract _verify() : Promise<Boolean>;
 
-    get_object_id() : string {
-        let raw_object_string : string = canonicalize(this.obj)
+    static get_object_id(obj : any) : string {
+        let raw_object_string : string = canonicalize(obj)
         console.log(raw_object_string)
         let h = createHash("blake2s")
         h.update(Buffer.from(raw_object_string))
@@ -28,7 +28,7 @@ abstract class MarabuObject {
     }
     
     async add_object() : Promise<Boolean> {
-        let digest = this.get_object_id()
+        let digest = MarabuObject.get_object_id(this.obj)
         let already_stored = await exists_in_db(digest)
         if(already_stored) {
             return false
@@ -48,7 +48,7 @@ abstract class MarabuObject {
 
     // Returns true if you should gossip ihaveobject
     async run_receive() : Promise<Boolean> {
-        if(await exists_in_db(this.get_object_id())) {
+        if(await exists_in_db(MarabuObject.get_object_id(this.obj))) {
             // Already dealt with, no need to process again
             return false
         }
