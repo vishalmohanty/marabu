@@ -33,7 +33,7 @@ class ObjectMessage extends Message {
         let marabu_object = new selected_class(this.socket, this.obj.object, this.blockchain_state)
         let added : Boolean = await marabu_object.run_receive()
         if(added) {
-            gossip(create_i_have_object_message, this.blockchain_state, MarabuObject.get_object_id(this.obj))
+            gossip(create_i_have_object_message, this.blockchain_state, MarabuObject.get_object_id(this.obj.object))
         }
     }
 }

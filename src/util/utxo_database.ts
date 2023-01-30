@@ -2,7 +2,10 @@ import level from 'level-ts';
 
 const object_database = new level('./utxo-database');
 
-async function exists_in_utxo_db(s : string) : Promise<Boolean> {
+async function exists_in_utxo_db(s : string | null) : Promise<Boolean> {
+    if(s == null) {
+        return true
+    }
     return await object_database.exists(s)
 }
 

@@ -25,7 +25,10 @@ let selector = {
     "getobject": GetObjectMessage,
     "ihaveobject": IHaveObjectMessage,
     "getmempool": StubMessage,
-    "getchaintip": StubMessage
+    "getchaintip": StubMessage,
+    "error": StubMessage
 }
 
 export {selector};
+
+// {"object":{"T":"1000000000000000000000000000000000000000000000000000000000000000","created":1671148801,"miner":"DEFINITELY_HONEST","nonce":"0000000000000000000000000000000000000000000000000000000000000005","note":"Our first block!","previd":"89cbf14a631a3e8593ff7e52e69913b97527b090cc8af7b7a63c4ccf7b18c0e0","txids":["19886066106320fa79c5dbee2a3fa0ecdae5eb6022b979e47eb8bce945d9bf22"],"type":"block"},"type":"object"}

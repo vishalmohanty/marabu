@@ -18,7 +18,9 @@ class ErrorMessage {
             {
                 "type": "error", 
                 "name": this.name,
-                "message": this.message
+                // "message": this.message
+                // TODO: Solution seems to expect "description" instead of message
+                "description": this.message
             }
         )
         console.log(`[sending] [${this.socket.socket.remoteAddress}:${this.socket.socket.remotePort}] ${canonicalized_string}`)

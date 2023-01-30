@@ -29,4 +29,3 @@ function create_i_have_object_message(socket : MarabuSocket, blockchain_state : 
 }
 
 export {IHaveObjectMessage, create_i_have_object_message}
-

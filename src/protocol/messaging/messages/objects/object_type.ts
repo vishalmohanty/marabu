@@ -20,7 +20,6 @@ abstract class MarabuObject {
 
     static get_object_id(obj : any) : string {
         let raw_object_string : string = canonicalize(obj)
-        console.log(raw_object_string)
         let h = createHash("blake2s")
         h.update(Buffer.from(raw_object_string))
         let digest : string = h.digest("hex")
@@ -42,10 +41,6 @@ abstract class MarabuObject {
         return false
     }
 
-    update_state() {
-        // Defaults to doing nothing
-    }
-
     // Returns true if you should gossip ihaveobject
     async run_receive() : Promise<Boolean> {
         if(await exists_in_db(MarabuObject.get_object_id(this.obj))) {
@@ -58,7 +53,6 @@ abstract class MarabuObject {
         if(!await this.add_object()) {
             return false
         }
-        await this.update_state()
         return true
     }
 }

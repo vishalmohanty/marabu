@@ -9,8 +9,10 @@ import { TransactionCoinbase, TransactionCoinbaseObject } from "./transaction_co
 import { TransactionPayment, TransactionPaymentObject } from "./transaction_payment";
 import { canonicalize } from "json-canonicalize";
 
-const TIMEOUT : number = 5000 // Timeout to get the txn from a peer
-
+const TIMEOUT : number = 5000 // Timeout to get the txn's from a peer
+const DIFFICULTY = "00000000abc00000000000000000000000000000000000000000000000000000"
+// Use this one for testing
+// const DIFFICULTY = "1000000000000000000000000000000000000000000000000000000000000000"
 interface Block {
     type : string,
     txids : Array<string>,
@@ -32,6 +34,7 @@ class BlockObject extends MarabuObject {
         // Check proof-of-work. If not, send "INVALID_BLOCK_POW"
         if (blockId >= this.obj.T) {
             (new ErrorMessage(this.socket, "INVALID_BLOCK_POW", `Block ID ${blockId} should be less than ${this.obj.T}`)).send()
+            return false
         }
 
         // Hardcoded genesis
@@ -62,55 +65,58 @@ class BlockObject extends MarabuObject {
 
         // If we reached here, then all the required txns are present in the DB (and thus valid).
 
-        // Check to make sure at most 1 coinbase and it is at txid @ 0
-        let maybe_coinbase_txid = this.obj.txids[0]
-        let maybe_coinbase_tx = await get_from_db(maybe_coinbase_txid)
-        let coinbase_present = false
-        let coinbase_amount = -1
-        if(TransactionCoinbaseObject.isThisObject(maybe_coinbase_tx)) {
-            coinbase_amount = maybe_coinbase_tx.outputs.map(output => output.value).reduce((a, b) => a+b)
-            coinbase_present = true
-        }
-
-        // Validate txns in order. If any failure, send the error returned by that validation.
-        // Update UTXO set after validating each txn.
-        let total_input = 0
-        let total_output = 0
         let utxos : Array<TransactionPointer> = await get_from_utxo_db(this.obj.previd)
         let utxo_set : Set<string> = new Set(utxos.map(utxo => canonicalize(utxo)))
-        for (const txid of this.obj.txids.slice(coinbase_present ? 1 : 0)) {
-            const txn : TransactionPayment = await get_from_db(txid)
-            if (!TransactionPaymentObject.isThisObject(txn)) {
-                (new ErrorMessage(this.socket, "INVALID_FORMAT", `Invalid payment transaction ${txid}`)).send()
+
+        if(this.obj.txids.length > 0) {
+            // Check to make sure at most 1 coinbase and it is at txid @ 0
+            let maybe_coinbase_txid = this.obj.txids[0]
+            let maybe_coinbase_tx = await get_from_db(maybe_coinbase_txid)
+            let coinbase_present = false
+            let coinbase_amount = -1
+            if(TransactionCoinbaseObject.isThisObject(maybe_coinbase_tx)) {
+                coinbase_amount = maybe_coinbase_tx.outputs.map(output => output.value).reduce((a, b) => a+b)
+                coinbase_present = true
+            }
+
+            // Validate txns in order. If any failure, send the error returned by that validation.
+            // Update UTXO set after validating each txn.
+            let total_input = 0
+            let total_output = 0
+            for (const txid of this.obj.txids.slice(coinbase_present ? 1 : 0)) {
+                const txn : TransactionPayment = await get_from_db(txid)
+                if (!TransactionPaymentObject.isThisObject(txn)) {
+                    (new ErrorMessage(this.socket, "INVALID_FORMAT", `Invalid payment transaction ${txid}`)).send()
+                    return false
+                }
+                // Ensure the coinbase transaction isn't being spent in this block
+                if(coinbase_present) {
+                    if(!txn.inputs.every(input => input.outpoint.txid != maybe_coinbase_tx)) {
+                        (new ErrorMessage(this.socket, "INVALID_BLOCK_COINBASE", `There was an attempt to spent the coinbase transaction within this block`)).send()
+                        return false
+                    }
+                }
+                for(const input_tx of txn.inputs) {
+                    // Make sure no double spending across all transactions
+                    if(!utxo_set.has(canonicalize(input_tx.outpoint))) {
+                        (new ErrorMessage(this.socket, "INVALID_TX_OUTPOINT", `Either a doublespend or trying to spend an invalid UTXO was detected`)).send()
+                        return false
+                    }
+                    let tx : TransactionCoinbase | TransactionPayment = await get_from_db(input_tx.outpoint.txid)
+                    total_input += tx.outputs[input_tx.outpoint.index].value
+                    utxo_set.delete(canonicalize(input_tx.outpoint))
+                }
+                for(const output_tx of txn.outputs) {
+                    total_output += output_tx.value
+                }
+            }
+            
+            // Coinbase txn value can be atmost 50 + inputs - outputs. If not, send "INVALID_BLOCK_COINBASE"
+            if(coinbase_present && coinbase_amount > 50*10**12 + total_input - total_output) {
+                (new ErrorMessage(this.socket, "INVALID_BLOCK_COINBASE", `Miner is skimming a little more than they should: ${coinbase_amount} > ${50 + total_input - total_output}`)).send()
                 return false
             }
-            // Ensure the coinbase transaction isn't being spent in this block
-            if(coinbase_present) {
-                if(!txn.inputs.every(input => input.outpoint.txid != maybe_coinbase_tx)) {
-                    (new ErrorMessage(this.socket, "INVALID_BLOCK_COINBASE", `There was an attempt to spent the coinbase transaction within this block`)).send()
-                    return false
-                }
-            }
-            for(const input_tx of txn.inputs) {
-                // Make sure no double spending across all transactions
-                if(!utxo_set.has(canonicalize(input_tx.outpoint))) {
-                    (new ErrorMessage(this.socket, "INVALID_TX_OUTPOINT", `Either a doublespend or trying to spend an invalid UTXO was detected`)).send()
-                    return false
-                }
-                let tx : TransactionCoinbase | TransactionPayment = await get_from_db(input_tx.outpoint.txid)
-                total_input += tx.outputs[input_tx.outpoint.index].value
-                utxo_set.delete(canonicalize(input_tx.outpoint))
-            }
-            for(const output_tx of txn.outputs) {
-                total_output += output_tx.value
-            }
-        }
-        
 
-        // Coinbase txn value can be atmost 50 + inputs - outputs. If not, send "INVALID_BLOCK_COINBASE"
-        if(coinbase_present && coinbase_amount > 50*10**12 + total_input - total_output) {
-            (new ErrorMessage(this.socket, "INVALID_BLOCK_COINBASE", `Miner is skimming a little more than they should: ${coinbase_amount} > ${50 + total_input - total_output}`)).send()
-            return false
         }
 
         // Write back new UTXO set for this block
@@ -122,12 +128,12 @@ class BlockObject extends MarabuObject {
 
     static isThisObject(obj : any) : obj is Block {
         // is genesis OR valid block
-        return obj && (MarabuObject.get_object_id(obj) == "0000000052a0e645eca917ae1c196e0d0a4fb756747f29ef52594d68484bb5e2" || (
+        return obj && ((MarabuObject.get_object_id(obj) == "0000000052a0e645eca917ae1c196e0d0a4fb756747f29ef52594d68484bb5e2") || (
             Array.isArray(obj.txids) &&
             obj.txids.every((txid) => isValidId(txid)) &&
             isValidId(obj.nonce) && 
             isValidId(obj.previd) && 
-            obj.T === "00000000abc00000000000000000000000000000000000000000000000000000" &&
+            obj.T === DIFFICULTY &&
             isValidAscii(obj.miner) &&
             isValidAscii(obj.note)
             &&
