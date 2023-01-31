@@ -13,8 +13,8 @@ async function func() {
     let txid : string = h.digest("hex")
     let transaction_obj = {"inputs":[{"outpoint":{"index":0, "txid":txid}, "sig":null}], "outputs":[{"pubkey":Buffer.from(public_key).toString("hex"), "value":10}],"type":"transaction"}
     canonical_string = canonicalize(transaction_obj)
-    // let signature = await ed25519.sign(Uint8Array.from(Buffer.from(canonical_string, 'utf-8')), private_key)
-    let signature = await ed25519.sign(canonical_string, private_key)
+    let signature = await ed25519.sign(Uint8Array.from(Buffer.from(canonical_string, 'utf-8')), private_key)
+    // let signature = await ed25519.sign(canonical_string, private_key)
     transaction_obj["inputs"][0]["sig"] = Buffer.from(signature).toString("hex")
     console.log(JSON.stringify({"object": transaction_obj, "type": "object"}))
 }

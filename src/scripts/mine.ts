@@ -60,7 +60,29 @@ async function main() {
     }
     let mined_obj = await mine(NEW_BLOCK)
     console.log(`Here is a valid block with that transaction (extends genesis):`)
-    console.log(canonicalize({"object": mined_obj, "type": "object"}))    
+    console.log(canonicalize({"object": mined_obj, "type": "object"}))
+    // Create a transaction that spends the previous coinbase
+    let spending_transaction_obj = {"inputs":[{"outpoint":{"index":0, "txid":coinbase_txid}, "sig":null}], "outputs":[{"pubkey":Buffer.from(public_key).toString("hex"), "value":500000}],"type":"transaction"}
+    canonical_string = canonicalize(spending_transaction_obj)
+    let signature = await ed25519.sign(Uint8Array.from(Buffer.from(canonical_string, 'utf-8')), private_key)
+    spending_transaction_obj["inputs"][0]["sig"] = Buffer.from(signature).toString("hex")
+    console.log(JSON.stringify({"object": spending_transaction_obj, "type": "object"}))
+    let new_prev_id = compute_hash(mined_obj)
+    let next_block = {
+        "T": DIFFICULTY,
+        "created": 1671148802,
+        "miner": "DEFINITELY_HONEST",
+        "nonce": "0000000000000000000000000000000000000000000000000000000000000000",
+        "note": "Our second block!",
+        "previd": new_prev_id,
+        "txids": [
+            compute_hash(spending_transaction_obj)
+        ],
+        "type": "block"
+    }
+    mined_obj = await mine(next_block)
+    console.log(`Here is a valid block with that transaction (extends 1st block):`)
+    console.log(canonicalize({"object": mined_obj, "type": "object"}))
 }
 
 main()

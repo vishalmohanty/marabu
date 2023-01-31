@@ -10,9 +10,9 @@ import { TransactionPayment, TransactionPaymentObject } from "./transaction_paym
 import { canonicalize } from "json-canonicalize";
 
 const TIMEOUT : number = 5000 // Timeout to get the txn's from a peer
-const DIFFICULTY = "00000000abc00000000000000000000000000000000000000000000000000000"
+// const DIFFICULTY = "00000000abc00000000000000000000000000000000000000000000000000000"
 // Use this one for testing
-// const DIFFICULTY = "1000000000000000000000000000000000000000000000000000000000000000"
+const DIFFICULTY = "1000000000000000000000000000000000000000000000000000000000000000"
 interface Block {
     type : string,
     txids : Array<string>,
@@ -65,9 +65,9 @@ class BlockObject extends MarabuObject {
 
         // If we reached here, then all the required txns are present in the DB (and thus valid).
 
-        let utxos : Array<TransactionPointer> = await get_from_utxo_db(this.obj.previd)
-        let utxo_set : Set<string> = new Set(utxos.map(utxo => canonicalize(utxo)))
-
+        let utxos : Array<string> = await get_from_utxo_db(this.obj.previd)
+        let utxo_set : Set<string> = new Set(utxos)
+        console.log(utxo_set)
         if(this.obj.txids.length > 0) {
             // Check to make sure at most 1 coinbase and it is at txid @ 0
             let maybe_coinbase_txid = this.obj.txids[0]
@@ -106,8 +106,27 @@ class BlockObject extends MarabuObject {
                     total_input += tx.outputs[input_tx.outpoint.index].value
                     utxo_set.delete(canonicalize(input_tx.outpoint))
                 }
-                for(const output_tx of txn.outputs) {
+                // All the outputs of this transaction become UTXOs
+                for(const [index, output_tx] of txn.outputs.entries()) {
                     total_output += output_tx.value
+                    let new_utxo : TransactionPointer = {
+                        txid: txid,
+                        index: index
+                    }
+                    utxo_set.add(canonicalize(new_utxo))
+                }
+            }
+
+            if(coinbase_present) {
+                // Add coinbase outputs to UTXO set
+                let coinbase_txid = this.obj.txids[0]
+                let coinbase_tx : TransactionCoinbase = await get_from_db(coinbase_txid)
+                for(let idx=0; idx < coinbase_tx.outputs.length; idx++) {
+                    let new_utxo : TransactionPointer = {
+                        txid: coinbase_txid,
+                        index: idx
+                    }
+                    utxo_set.add(canonicalize(new_utxo))
                 }
             }
             
@@ -120,7 +139,7 @@ class BlockObject extends MarabuObject {
         }
 
         // Write back new UTXO set for this block
-        let block_utxo = Array.from(utxo_set).map(utxo_string => JSON.parse(utxo_string))
+        let block_utxo = Array.from(utxo_set)
         await put_in_utxo_db(blockId, block_utxo)
 
         return true
