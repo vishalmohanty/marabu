@@ -10,9 +10,9 @@ import { TransactionPayment, TransactionPaymentObject } from "./transaction_paym
 import { canonicalize } from "json-canonicalize";
 
 const TIMEOUT : number = 5000 // Timeout to get the txn's from a peer
-// const DIFFICULTY = "00000000abc00000000000000000000000000000000000000000000000000000"
+const DIFFICULTY = "00000000abc00000000000000000000000000000000000000000000000000000"
 // Use this one for testing
-const DIFFICULTY = "1000000000000000000000000000000000000000000000000000000000000000"
+// const DIFFICULTY = "1000000000000000000000000000000000000000000000000000000000000000"
 interface Block {
     type : string,
     txids : Array<string>,
@@ -153,9 +153,8 @@ class BlockObject extends MarabuObject {
             isValidId(obj.nonce) && 
             isValidId(obj.previd) && 
             obj.T === DIFFICULTY &&
-            isValidAscii(obj.miner) &&
-            isValidAscii(obj.note)
-            &&
+            ((obj.miner == undefined) || isValidAscii(obj.miner)) &&
+            ((obj.note == undefined) || isValidAscii(obj.note)) &&
             ((obj.studentids == undefined) ||
             (Array.isArray(obj.studentids) && obj.studentids.every((id) => isValidAscii(id))))
         ))
