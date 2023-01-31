@@ -153,8 +153,8 @@ class BlockObject extends MarabuObject {
             isValidId(obj.nonce) && 
             isValidId(obj.previd) && 
             obj.T === DIFFICULTY &&
-            ((obj.miner == undefined) || isValidAscii(obj.miner)) &&
-            ((obj.note == undefined) || isValidAscii(obj.note)) &&
+            (!obj.hasOwnProperty("miner") || isValidAscii(obj.miner)) &&
+            (!obj.hasOwnProperty("note") || isValidAscii(obj.note)) &&
             ((obj.studentids == undefined) ||
             (Array.isArray(obj.studentids) && obj.studentids.every((id) => isValidAscii(id))))
         ))
