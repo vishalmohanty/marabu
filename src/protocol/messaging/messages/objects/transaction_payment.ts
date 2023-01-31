@@ -27,7 +27,7 @@ class TransactionPaymentObject extends MarabuObject {
             if(!await exists_in_db(txid)) {
                 // Send a find request, if you get no response, respond with UNFINDABLE_OBJECT
                 // If someone sends you an object but you find an error, respond with that error message here
-                (new ErrorMessage(this.socket, "UNFINDABLE_OBJECT", `The transaction id ${txid} could not be found`)).send()
+                (new ErrorMessage(this.socket, "UNKNOWN_OBJECT", `The transaction id ${txid} could not be found`)).send()
                 return false
             }
             let output_transaction : TransactionPayment | TransactionCoinbase = await get_from_db(txid)

@@ -85,8 +85,12 @@ class BlockObject extends MarabuObject {
             let total_output = 0
             for (const txid of this.obj.txids.slice(coinbase_present ? 1 : 0)) {
                 const txn : TransactionPayment = await get_from_db(txid)
+                if (TransactionCoinbaseObject.isThisObject(txn)) {
+                    (new ErrorMessage(this.socket, "INVALID_BLOCK_COINBASE", `Invalid coinbase transaction ${txid}. There can only be 1 coinbase transaction and it has to be the first transaction of the block.`)).send()
+                    return false
+                }
                 if (!TransactionPaymentObject.isThisObject(txn)) {
-                    (new ErrorMessage(this.socket, "INVALID_FORMAT", `Invalid payment transaction ${txid}`)).send()
+                    (new ErrorMessage(this.socket, "INVALID_FORMAT", `ID: ${txid} is not a transaction.`)).send()
                     return false
                 }
                 // Ensure the coinbase transaction isn't being spent in this block
