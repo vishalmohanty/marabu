@@ -41,7 +41,7 @@ class BlockObject extends MarabuObject {
             // Try grabbing parent block
             gossip(create_get_object_message, this.blockchain_state, this.obj.previd)
             // A little hacky
-            // Wait for ANCESTOR_RETRIEVAL_TIMEOUT seconds
+            // Wait for ANCESTOR_RETRIEVAL_TIMEOUT milliseconds
             for(let i=0; i < 10; i++) {
                 await wait(ANCESTOR_RETRIEVAL_TIMEOUT/10)
                 if(await exists_in_db(this.obj.previd)) {
