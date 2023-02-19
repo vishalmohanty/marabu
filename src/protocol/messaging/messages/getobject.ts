@@ -2,7 +2,7 @@ import { BlockchainState } from "../../state/blockchain_state";
 import {create_peers_message} from "./peers"
 import {MarabuSocket} from "../../../util/marabu_socket"
 import { Message } from "../message_types/message";
-import { exists_in_db, get_from_db } from "../../../util/database";
+import { exists_in_db, get_from_db } from "../../../util/object_database";
 import { ErrorMessage } from "./error";
 import { create_object_message } from "./object";
 

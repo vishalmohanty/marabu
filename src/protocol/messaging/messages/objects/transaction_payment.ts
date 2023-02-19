@@ -1,6 +1,6 @@
 import {TransactionInput, TransactionOutput, isTransactionInput, isTransactionOutput} from "./building_blocks"
 import { MarabuObject } from "./object_type"
-import {exists_in_db, get_from_db} from "../../../../util/database"
+import {exists_in_db, get_from_db} from "../../../../util/object_database"
 import {ErrorMessage} from "../error"
 import {TransactionCoinbase} from "./transaction_coinbase"
 import * as ed25519 from "@noble/ed25519"

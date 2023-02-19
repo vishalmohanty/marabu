@@ -1,7 +1,7 @@
 import { BlockchainState } from "../../state/blockchain_state";
 import {MarabuSocket} from "../../../util/marabu_socket"
 import { Message } from "../message_types/message";
-import { exists_in_db, get_from_db } from "../../../util/database";
+import { exists_in_db, get_from_db } from "../../../util/object_database";
 import {create_get_object_message} from "./getobject"
 
 interface IHaveObject {

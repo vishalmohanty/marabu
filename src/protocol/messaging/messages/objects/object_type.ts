@@ -1,6 +1,6 @@
 import {canonicalize} from "json-canonicalize"
 import {createHash} from "blake2"
-import {exists_in_db, put_in_db, get_from_db} from "../../../../util/database"
+import {exists_in_db, put_in_db, get_from_db} from "../../../../util/object_database"
 import { MarabuSocket } from "../../../../util/marabu_socket"
 import { BlockchainState } from "../../../state/blockchain_state"
 
@@ -39,6 +39,10 @@ abstract class MarabuObject {
     // placeholder, need to override
     static isThisObject(obj : any) {
         return false
+    }
+
+    async complete_prereqs() : Promise<Boolean> {
+        return
     }
 
     // Returns true if you should gossip ihaveobject

@@ -1,8 +1,10 @@
 import {isValidId, isValidAscii, TransactionOutput, isTransactionInput, isTransactionOutput, TransactionPointer} from "./building_blocks"
 import { MarabuObject } from "./object_type"
 import {ErrorMessage} from "../error"
-import { exists_in_db, get_from_db } from "../../../../util/database";
-import { exists_in_utxo_db, get_from_utxo_db, put_in_utxo_db } from "../../../../util/utxo_database";
+import { exists_in_db, get_from_db } from "../../../../util/object_database";
+import { get_from_utxo_db, put_in_utxo_db } from "../../../../util/utxo_database";
+import { get_from_height_db, put_in_height_db } from "../../../../util/height_database";
+import { wait } from "../../../../util/util_methods";
 import { gossip } from "../../../../util/gossip";
 import { create_get_object_message } from "../getobject"
 import { TransactionCoinbase, TransactionCoinbaseObject } from "./transaction_coinbase";
@@ -11,6 +13,7 @@ import { canonicalize } from "json-canonicalize";
 
 const TIMEOUT : number = 5000 // Timeout to get the txn's from a peer
 const DIFFICULTY = "00000000abc00000000000000000000000000000000000000000000000000000"
+const ANCESTOR_RETRIEVAL_TIMEOUT : number = 10000
 // Use this one for testing
 // const DIFFICULTY = "1000000000000000000000000000000000000000000000000000000000000000"
 interface Block {
@@ -28,18 +31,35 @@ interface Block {
 class BlockObject extends MarabuObject {
     obj : Block
 
+    async complete_prereqs() : Promise<Boolean> {
+        if(!exists_in_db(this.obj.previd)) {
+            // Try grabbing parent block
+            create_get_object_message(this.socket, this.blockchain_state, this.obj.previd).run_send_actions()
+            // Wait for ANCESTOR_RETRIEVAL_TIMEOUT seconds
+            await wait(ANCESTOR_RETRIEVAL_TIMEOUT)
+            // Check if object is in DB (meaning it was successfully received and verified, including UTXO set)
+            return exists_in_db(this.obj.previd)
+        }
+        // Already in db, so we have parent block and it is successfully verified
+        return true
+    }
+
     async _verify() : Promise<Boolean> {
         let blockId = MarabuObject.get_object_id(this.obj)
+
+        // Previous block already exists (we have verified that)
+        let prev_block : Block = await get_from_db(this.obj.previd)
+
+        // Verify timing
+        const curr_timestamp = Date.now()
+        if(!((prev_block.created <= this.obj.created) && (this.obj.created <= curr_timestamp))) {
+            (new ErrorMessage(this.socket, "INVALID_BLOCK_TIMESTAMP", "Ensure that the timestamps for the block creation are correct.")).send()
+            return false
+        }
 
         // Check proof-of-work. If not, send "INVALID_BLOCK_POW"
         if (blockId >= this.obj.T) {
             (new ErrorMessage(this.socket, "INVALID_BLOCK_POW", `Block ID ${blockId} should be less than ${this.obj.T}`)).send()
-            return false
-        }
-
-        // Hardcoded genesis
-        if (!await exists_in_utxo_db(this.obj.previd)) {
-            (new ErrorMessage(this.socket, "UNFINDABLE_OBJECT", `Temporary for PSET 3, couldn't locate previous block.`)).send()
             return false
         }
         
@@ -52,8 +72,7 @@ class BlockObject extends MarabuObject {
         }
 
         // Wait for TIMEOUT
-        await new Promise(resolve => setTimeout(resolve, TIMEOUT));
-
+        await wait(TIMEOUT)
 
         // If still not in DB, send "UNFINDABLE_OBJECT"
         for (const txid of this.obj.txids) {
@@ -67,13 +86,13 @@ class BlockObject extends MarabuObject {
 
         let utxos : Array<string> = await get_from_utxo_db(this.obj.previd)
         let utxo_set : Set<string> = new Set(utxos)
-        console.log(utxo_set)
+
         if(this.obj.txids.length > 0) {
             // Check to make sure at most 1 coinbase and it is at txid @ 0
             let maybe_coinbase_txid = this.obj.txids[0]
             let maybe_coinbase_tx = await get_from_db(maybe_coinbase_txid)
             let coinbase_present = false
-            let coinbase_amount = -1
+            let coinbase_amount = 0
             if(TransactionCoinbaseObject.isThisObject(maybe_coinbase_tx)) {
                 coinbase_amount = maybe_coinbase_tx.outputs.map(output => output.value).reduce((a, b) => a+b)
                 coinbase_present = true
@@ -122,9 +141,15 @@ class BlockObject extends MarabuObject {
             }
 
             if(coinbase_present) {
-                // Add coinbase outputs to UTXO set
                 let coinbase_txid = this.obj.txids[0]
                 let coinbase_tx : TransactionCoinbase = await get_from_db(coinbase_txid)
+                // Check to make sure the height in the coinbase matches the height of the block
+                const prev_height = await get_from_height_db(this.obj.previd)
+                if(coinbase_tx.height != prev_height + 1) {
+                    (new ErrorMessage(this.socket, "INVALID_BLOCK_COINBASE", `The coinbase height is set to ${coinbase_tx.height} when we expected ${prev_height+1}`))
+                    return false
+                }
+                // Add coinbase outputs to UTXO set
                 for(let idx=0; idx < coinbase_tx.outputs.length; idx++) {
                     let new_utxo : TransactionPointer = {
                         txid: coinbase_txid,
@@ -145,6 +170,9 @@ class BlockObject extends MarabuObject {
         // Write back new UTXO set for this block
         let block_utxo = Array.from(utxo_set)
         await put_in_utxo_db(blockId, block_utxo)
+
+        // Write back height for this block
+        await put_in_height_db(blockId, (await get_from_height_db(this.obj.previd))+1)
 
         return true
     }

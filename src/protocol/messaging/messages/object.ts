@@ -31,6 +31,11 @@ class ObjectMessage extends Message {
         // Object lifecycle
         let selected_class = object_selector(this.obj.object)
         let marabu_object = new selected_class(this.socket, this.obj.object, this.blockchain_state)
+        let prereqs_complete = await marabu_object.complete_prereqs()
+        if(!prereqs_complete) {
+            (new ErrorMessage(this.socket, "UNFINDABLE_OBJECT", "Could not find complete chain which ends in this block.")).send()
+            return
+        }
         let added : Boolean = await marabu_object.run_receive()
         if(added) {
             gossip(create_i_have_object_message, this.blockchain_state, MarabuObject.get_object_id(this.obj.object))
