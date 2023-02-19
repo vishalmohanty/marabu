@@ -13,7 +13,7 @@ async function put_in_height_db(s : string, val : any) {
     await await object_database.put(s, val)
 }
 
-async function get_from_height_db(s : string) : Promise<any> {
+async function get_from_height_db(s : string | null) : Promise<any> {
     return await object_database.get(s)
 }
 

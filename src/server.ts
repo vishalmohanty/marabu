@@ -7,6 +7,7 @@ import { BlockchainState } from "./protocol/state/blockchain_state";
 import { create_hello_message, HelloMessage } from "./protocol/messaging/messages/hello";
 import { create_get_peers_message } from "./protocol/messaging/messages/getpeers";
 import { MarabuSocket } from "./util/marabu_socket";
+import { create_get_chaintip_message } from "./protocol/messaging/messages/getchaintip";
 
 let PORT : Number = 18018
 let BACKING_FILE_NAME : string = "src/protocol/state/data.json"
@@ -34,6 +35,7 @@ server.on("connection", function(socket : Socket) {
     let handshake_completed : Boolean = false;
     create_hello_message(marabu_socket, blockchain_state).run_send_actions()
     create_get_peers_message(marabu_socket, blockchain_state).run_send_actions()
+    create_get_chaintip_message(marabu_socket, blockchain_state).run_send_actions()
     marabu_socket.socket.on('data', function(chunk : Buffer) {
         for(const defragmented of json_defragmenter.feed(chunk)) {
             if(!run_initial_checks(marabu_socket, defragmented)) {
@@ -99,6 +101,7 @@ for(const peer of blockchain_state.get_peers().slice(0, 10)) {
                     continue
                 }
                 create_get_peers_message(marabu_client_socket, blockchain_state).run_send_actions()
+                create_get_chaintip_message(marabu_client_socket, blockchain_state).run_send_actions()
                 handshake_completed = true
             } else {
                 // TODO: Same as above for message type

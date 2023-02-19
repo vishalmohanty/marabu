@@ -10,10 +10,10 @@ abstract class MarabuObject {
     socket : MarabuSocket
     blockchain_state : BlockchainState
 
-    constructor(socket : MarabuSocket, obj : any) {
+    constructor(socket : MarabuSocket, obj : any, blockchain_state : BlockchainState) {
         this.socket = socket
         this.obj = obj
-        this.blockchain_state = this.blockchain_state
+        this.blockchain_state = blockchain_state
     }
 
     abstract _verify() : Promise<Boolean>;
@@ -42,7 +42,7 @@ abstract class MarabuObject {
     }
 
     async complete_prereqs() : Promise<Boolean> {
-        return
+        return true
     }
 
     // Returns true if you should gossip ihaveobject

@@ -1,7 +1,7 @@
 import {isValidId, isValidAscii, TransactionOutput, isTransactionInput, isTransactionOutput, TransactionPointer} from "./building_blocks"
 import { MarabuObject } from "./object_type"
 import {ErrorMessage} from "../error"
-import { exists_in_db, get_from_db } from "../../../../util/object_database";
+import { exists_in_db, get_from_db, put_in_db } from "../../../../util/object_database";
 import { get_from_utxo_db, put_in_utxo_db } from "../../../../util/utxo_database";
 import { get_from_height_db, put_in_height_db } from "../../../../util/height_database";
 import { wait } from "../../../../util/util_methods";
@@ -11,8 +11,10 @@ import { TransactionCoinbase, TransactionCoinbaseObject } from "./transaction_co
 import { TransactionPayment, TransactionPaymentObject } from "./transaction_payment";
 import { canonicalize } from "json-canonicalize";
 
-const TIMEOUT : number = 5000 // Timeout to get the txn's from a peer
+const GENESIS_ID = "0000000052a0e645eca917ae1c196e0d0a4fb756747f29ef52594d68484bb5e2"
+const TIMEOUT : number = 1000 // Timeout to get the txn's from a peer
 const DIFFICULTY = "00000000abc00000000000000000000000000000000000000000000000000000"
+// Set this to be higher than txn timeout
 const ANCESTOR_RETRIEVAL_TIMEOUT : number = 10000
 // Use this one for testing
 // const DIFFICULTY = "1000000000000000000000000000000000000000000000000000000000000000"
@@ -32,13 +34,16 @@ class BlockObject extends MarabuObject {
     obj : Block
 
     async complete_prereqs() : Promise<Boolean> {
-        if(!exists_in_db(this.obj.previd)) {
+        if(MarabuObject.get_object_id(this.obj) == GENESIS_ID) {
+            return true
+        }
+        if(!await exists_in_db(this.obj.previd)) {
             // Try grabbing parent block
-            create_get_object_message(this.socket, this.blockchain_state, this.obj.previd).run_send_actions()
+            gossip(create_get_object_message, this.blockchain_state, this.obj.previd)
             // Wait for ANCESTOR_RETRIEVAL_TIMEOUT seconds
             await wait(ANCESTOR_RETRIEVAL_TIMEOUT)
             // Check if object is in DB (meaning it was successfully received and verified, including UTXO set)
-            return exists_in_db(this.obj.previd)
+            return await exists_in_db(this.obj.previd)
         }
         // Already in db, so we have parent block and it is successfully verified
         return true
@@ -46,6 +51,11 @@ class BlockObject extends MarabuObject {
 
     async _verify() : Promise<Boolean> {
         let blockId = MarabuObject.get_object_id(this.obj)
+        if(blockId == GENESIS_ID) {
+            put_in_height_db(blockId, 0)
+            put_in_utxo_db(blockId, [])
+            return true
+        }
 
         // Previous block already exists (we have verified that)
         let prev_block : Block = await get_from_db(this.obj.previd)
@@ -164,26 +174,33 @@ class BlockObject extends MarabuObject {
                 (new ErrorMessage(this.socket, "INVALID_BLOCK_COINBASE", `Miner is skimming a little more than they should: ${coinbase_amount} > ${50 + total_input - total_output}`)).send()
                 return false
             }
-
         }
 
         // Write back new UTXO set for this block
         let block_utxo = Array.from(utxo_set)
         await put_in_utxo_db(blockId, block_utxo)
-
+        
         // Write back height for this block
-        await put_in_height_db(blockId, (await get_from_height_db(this.obj.previd))+1)
+        let new_height = (await get_from_height_db(this.obj.previd))+1
+        await put_in_height_db(blockId, new_height)
+
+        // Check if this is max height and update chaintip if it is
+        if(new_height > this.blockchain_state.chain_length) {
+            this.blockchain_state.chain_length = new_height
+            this.blockchain_state.chaintip = blockId
+            console.log(`Setting a new chaintip to ${blockId}, new height is ${new_height}`)
+        }
 
         return true
     }
 
     static isThisObject(obj : any) : obj is Block {
-        // is genesis OR valid block
-        return obj && ((MarabuObject.get_object_id(obj) == "0000000052a0e645eca917ae1c196e0d0a4fb756747f29ef52594d68484bb5e2") || (
+        // is genesis (special override because previd is none) OR valid block
+        return obj && ((MarabuObject.get_object_id(obj) == GENESIS_ID) || (
             Array.isArray(obj.txids) &&
             obj.txids.every((txid) => isValidId(txid)) &&
             isValidId(obj.nonce) && 
-            isValidId(obj.previd) && 
+            isValidId(obj.previd) &&
             obj.T === DIFFICULTY &&
             (!obj.hasOwnProperty("miner") || isValidAscii(obj.miner)) &&
             (!obj.hasOwnProperty("note") || isValidAscii(obj.note)) &&

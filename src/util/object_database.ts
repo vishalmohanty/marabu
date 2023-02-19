@@ -7,7 +7,7 @@ async function exists_in_db(s : string) : Promise<Boolean> {
 }
 
 async function put_in_db(s : string, val : any) {
-    await await object_database.put(s, val)
+    await object_database.put(s, val)
 }
 
 async function get_from_db(s : string) : Promise<any> {
