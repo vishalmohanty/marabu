@@ -12,7 +12,7 @@ import { TransactionPayment, TransactionPaymentObject } from "./transaction_paym
 import { canonicalize } from "json-canonicalize";
 
 const GENESIS_ID = "0000000052a0e645eca917ae1c196e0d0a4fb756747f29ef52594d68484bb5e2"
-const TIMEOUT : number = 1000 // Timeout to get the txn's from a peer
+const TRANSACTION_TIMEOUT : number = 1000 // Timeout to get the txn's from a peer
 const DIFFICULTY = "00000000abc00000000000000000000000000000000000000000000000000000"
 // Set this to be higher than txn timeout
 const ANCESTOR_RETRIEVAL_TIMEOUT : number = 10000
@@ -40,10 +40,17 @@ class BlockObject extends MarabuObject {
         if(!await exists_in_db(this.obj.previd)) {
             // Try grabbing parent block
             gossip(create_get_object_message, this.blockchain_state, this.obj.previd)
+            // A little hacky
             // Wait for ANCESTOR_RETRIEVAL_TIMEOUT seconds
-            await wait(ANCESTOR_RETRIEVAL_TIMEOUT)
-            // Check if object is in DB (meaning it was successfully received and verified, including UTXO set)
-            return await exists_in_db(this.obj.previd)
+            for(let i=0; i < 10; i++) {
+                await wait(ANCESTOR_RETRIEVAL_TIMEOUT/10)
+                if(await exists_in_db(this.obj.previd)) {
+                    // Found
+                    return true
+                }
+            }
+            // If we didn't get it yet, we should exit.
+            return false
         }
         // Already in db, so we have parent block and it is successfully verified
         return true
@@ -82,7 +89,7 @@ class BlockObject extends MarabuObject {
         }
 
         // Wait for TIMEOUT
-        await wait(TIMEOUT)
+        await wait(TRANSACTION_TIMEOUT)
 
         // If still not in DB, send "UNFINDABLE_OBJECT"
         for (const txid of this.obj.txids) {
