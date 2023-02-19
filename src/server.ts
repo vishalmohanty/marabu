@@ -8,9 +8,17 @@ import { create_hello_message, HelloMessage } from "./protocol/messaging/message
 import { create_get_peers_message } from "./protocol/messaging/messages/getpeers";
 import { MarabuSocket } from "./util/marabu_socket";
 import { create_get_chaintip_message } from "./protocol/messaging/messages/getchaintip";
+import {debug} from "./config"
 
 let PORT : Number = 18018
 let BACKING_FILE_NAME : string = "src/protocol/state/data.json"
+let debug_cli = false
+if(process.argv.length == 3) {
+    if(process.argv[2] == "true") {
+        debug_cli = true
+    }
+}
+debug[0] = debug_cli
 
 let server = new Server()
 let blockchain_state : BlockchainState = new BlockchainState(BACKING_FILE_NAME)
