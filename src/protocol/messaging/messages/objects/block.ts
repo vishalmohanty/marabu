@@ -34,7 +34,6 @@ class BlockObject extends MarabuObject {
     obj : Block
 
     async complete_prereqs() : Promise<Boolean> {
-        console.log("Completing prereqs for", MarabuObject.get_object_id(this.obj))
         if(MarabuObject.get_object_id(this.obj) == GENESIS_ID) {
             return true
         }
@@ -84,10 +83,7 @@ class BlockObject extends MarabuObject {
         if (blockId >= this.obj.T) {
             (new ErrorMessage(this.socket, "INVALID_BLOCK_POW", `Block ID ${blockId} should be less than ${this.obj.T}`)).send()
             return false
-        }
-
-        console.log("All verifies done.")
-        
+        }        
         // Check transactions in DB after coinbase
         for (const txid of this.obj.txids) {
             if(!await exists_in_db(txid)) {
