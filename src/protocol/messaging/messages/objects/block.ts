@@ -13,11 +13,11 @@ import { canonicalize } from "json-canonicalize";
 
 const GENESIS_ID = "0000000052a0e645eca917ae1c196e0d0a4fb756747f29ef52594d68484bb5e2"
 const TRANSACTION_TIMEOUT : number = 1000 // Timeout to get the txn's from a peer
-const DIFFICULTY = "00000000abc00000000000000000000000000000000000000000000000000000"
+// const DIFFICULTY = "00000000abc00000000000000000000000000000000000000000000000000000"
 // Set this to be higher than txn timeout
 const ANCESTOR_RETRIEVAL_TIMEOUT : number = 10000
 // Use this one for testing
-// const DIFFICULTY = "1000000000000000000000000000000000000000000000000000000000000000"
+const DIFFICULTY = "1000000000000000000000000000000000000000000000000000000000000000"
 interface Block {
     type : string,
     txids : Array<string>,
@@ -34,8 +34,13 @@ class BlockObject extends MarabuObject {
     obj : Block
 
     async complete_prereqs() : Promise<Boolean> {
+        console.log("Completing prereqs for", MarabuObject.get_object_id(this.obj))
         if(MarabuObject.get_object_id(this.obj) == GENESIS_ID) {
             return true
+        }
+        if(this.obj.previd == null) {
+            (new ErrorMessage(this.socket, "INVALID_GENESIS", "Block saying its previd is null is not genesis")).send()
+            return false
         }
         if(!await exists_in_db(this.obj.previd)) {
             // Try grabbing parent block
@@ -49,7 +54,8 @@ class BlockObject extends MarabuObject {
                     return true
                 }
             }
-            // If we didn't get it yet, we should exit.
+            // If we didn't get it yet, we should send error and stop processing this object/
+            (new ErrorMessage(this.socket, "UNFINDABLE_OBJECT", "Couldn't find parent chain")).send()
             return false
         }
         // Already in db, so we have parent block and it is successfully verified
@@ -79,6 +85,8 @@ class BlockObject extends MarabuObject {
             (new ErrorMessage(this.socket, "INVALID_BLOCK_POW", `Block ID ${blockId} should be less than ${this.obj.T}`)).send()
             return false
         }
+
+        console.log("All verifies done.")
         
         // Check transactions in DB after coinbase
         for (const txid of this.obj.txids) {
@@ -111,7 +119,11 @@ class BlockObject extends MarabuObject {
             let coinbase_present = false
             let coinbase_amount = 0
             if(TransactionCoinbaseObject.isThisObject(maybe_coinbase_tx)) {
-                coinbase_amount = maybe_coinbase_tx.outputs.map(output => output.value).reduce((a, b) => a+b)
+                if(maybe_coinbase_tx.outputs.length == 0) {
+                    coinbase_amount = 0
+                } else {
+                    coinbase_amount = maybe_coinbase_tx.outputs.map(output => output.value).reduce((a, b) => a+b)
+                }
                 coinbase_present = true
             }
 
@@ -163,7 +175,7 @@ class BlockObject extends MarabuObject {
                 // Check to make sure the height in the coinbase matches the height of the block
                 const prev_height = await get_from_height_db(this.obj.previd)
                 if(coinbase_tx.height != prev_height + 1) {
-                    (new ErrorMessage(this.socket, "INVALID_BLOCK_COINBASE", `The coinbase height is set to ${coinbase_tx.height} when we expected ${prev_height+1}`))
+                    (new ErrorMessage(this.socket, "INVALID_BLOCK_COINBASE", `The coinbase height is set to ${coinbase_tx.height} when we expected ${prev_height+1}`)).send()
                     return false
                 }
                 // Add coinbase outputs to UTXO set
@@ -202,18 +214,17 @@ class BlockObject extends MarabuObject {
     }
 
     static isThisObject(obj : any) : obj is Block {
-        // is genesis (special override because previd is none) OR valid block
-        return obj && ((MarabuObject.get_object_id(obj) == GENESIS_ID) || (
+        return obj && (
             Array.isArray(obj.txids) &&
             obj.txids.every((txid) => isValidId(txid)) &&
             isValidId(obj.nonce) && 
-            isValidId(obj.previd) &&
+            (isValidId(obj.previd) || obj.previd == null) &&
             obj.T === DIFFICULTY &&
             (!obj.hasOwnProperty("miner") || isValidAscii(obj.miner)) &&
             (!obj.hasOwnProperty("note") || isValidAscii(obj.note)) &&
             ((obj.studentids == undefined) ||
             (Array.isArray(obj.studentids) && obj.studentids.every((id) => isValidAscii(id))))
-        ))
+        )
     }
 }
 

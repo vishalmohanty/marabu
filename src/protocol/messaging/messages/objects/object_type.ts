@@ -51,12 +51,16 @@ abstract class MarabuObject {
             // Already dealt with, no need to process again
             return false
         }
+        console.log("Running verify for", MarabuObject.get_object_id(this.obj))
         if(!await this._verify()) {
+            console.log("Was not able to run verify", MarabuObject.get_object_id(this.obj))
             return false
         }
+        console.log("Was able to run verify", MarabuObject.get_object_id(this.obj))
         if(!await this.add_object()) {
             return false
         }
+        console.log("Added object", MarabuObject.get_object_id(this.obj))
         return true
     }
 }
