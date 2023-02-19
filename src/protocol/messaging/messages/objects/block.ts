@@ -10,7 +10,7 @@ import { create_get_object_message } from "../getobject"
 import { TransactionCoinbase, TransactionCoinbaseObject } from "./transaction_coinbase";
 import { TransactionPayment, TransactionPaymentObject } from "./transaction_payment";
 import { canonicalize } from "json-canonicalize";
-import { debug } from "../../../../config";
+import { config } from "../../../../config";
 
 const GENESIS_ID = "0000000052a0e645eca917ae1c196e0d0a4fb756747f29ef52594d68484bb5e2"
 const TRANSACTION_TIMEOUT : number = 1000 // Timeout to get the txn's from a peer
@@ -217,7 +217,7 @@ class BlockObject extends MarabuObject {
             obj.txids.every((txid) => isValidId(txid)) &&
             isValidId(obj.nonce) && 
             (isValidId(obj.previd) || obj.previd == null) &&
-            obj.T === (debug[0] ? DEBUG_DIFFICULTY : PROD_DIFFICULTY)  &&
+            obj.T === (config.debug ? DEBUG_DIFFICULTY : PROD_DIFFICULTY)  &&
             (!obj.hasOwnProperty("miner") || isValidAscii(obj.miner)) &&
             (!obj.hasOwnProperty("note") || isValidAscii(obj.note)) &&
             ((obj.studentids == undefined) ||

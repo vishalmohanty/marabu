@@ -1,3 +1,5 @@
-let debug = [false]
+let config = {
+    debug : false
+}
 
-export {debug}
+export {config}
