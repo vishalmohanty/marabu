@@ -25,10 +25,12 @@ class ChaintipMessage extends Message {
             if(new_height > this.blockchain_state.chain_length) {
                 this.blockchain_state.chain_length = new_height
                 this.blockchain_state.chaintip = this.obj.blockid
-            }
+            }    
         }
         // Run get object on that chaintip
-        create_get_object_message(this.socket, this.blockchain_state, this.obj.blockid).run_send_actions()
+	else {
+            create_get_object_message(this.socket, this.blockchain_state, this.obj.blockid).run_send_actions()
+	}
     }
 }
 
