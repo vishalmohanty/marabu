@@ -28,6 +28,11 @@ class ObjectMessage extends Message {
         return true
     }
     async _perform_validated_receive() {
+        let object_id = MarabuObject.get_object_id(this.obj.object)
+        if(this.blockchain_state.objectid_handled.has(object_id)) {
+            return
+        }
+        this.blockchain_state.objectid_handled.add(object_id)
         // Object lifecycle
         let selected_class = object_selector(this.obj.object)
         let marabu_object = new selected_class(this.socket, this.obj.object, this.blockchain_state)
