@@ -75,8 +75,8 @@ class BlockObject extends MarabuObject {
         let prev_block : Block = await get_from_db(this.obj.previd)
 
         // Verify timing
-        const curr_timestamp = Date.now()
-        if(!((prev_block.created <= this.obj.created) && (this.obj.created <= curr_timestamp))) {
+        const curr_timestamp = Date.now()/1000
+        if(!((prev_block.created < this.obj.created) && (this.obj.created <= curr_timestamp))) {
             (new ErrorMessage(this.socket, "INVALID_BLOCK_TIMESTAMP", "Ensure that the timestamps for the block creation are correct.")).send()
             return false
         }
