@@ -30,6 +30,7 @@ class ObjectMessage extends Message {
     async _perform_validated_receive() {
         let object_id = MarabuObject.get_object_id(this.obj.object)
         if(this.blockchain_state.objectid_handled.has(object_id)) {
+            console.log("Returning cause already handled object ", object_id)
             return
         }
         this.blockchain_state.objectid_handled.add(object_id)
@@ -39,11 +40,14 @@ class ObjectMessage extends Message {
         let prereqs_complete = await marabu_object.complete_prereqs()
         if(!prereqs_complete) {
             // Prereqs not complete so don't run receive
+            this.blockchain_state.objectid_handled.delete(object_id)
             return
         }
         let added : Boolean = await marabu_object.run_receive()
         if(added) {
             gossip(create_i_have_object_message, this.blockchain_state, MarabuObject.get_object_id(this.obj.object))
+        } else {
+            this.blockchain_state.objectid_handled.delete(object_id)
         }
     }
 }

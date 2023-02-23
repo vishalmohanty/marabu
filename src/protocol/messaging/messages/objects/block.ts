@@ -39,6 +39,12 @@ class BlockObject extends MarabuObject {
         if(MarabuObject.get_object_id(this.obj) == GENESIS_ID) {
             return true
         }
+        let blockId = MarabuObject.get_object_id(this.obj)
+        // Check proof-of-work. If not, send "INVALID_BLOCK_POW"
+        if (blockId >= this.obj.T) {
+            (new ErrorMessage(this.socket, "INVALID_BLOCK_POW", `Block ID ${blockId} should be less than ${this.obj.T}`)).send()
+            return false
+        }
         if(this.obj.previd == null) {
             (new ErrorMessage(this.socket, "INVALID_GENESIS", "Block saying its previd is null is not genesis")).send()
             return false
@@ -80,12 +86,7 @@ class BlockObject extends MarabuObject {
             (new ErrorMessage(this.socket, "INVALID_BLOCK_TIMESTAMP", "Ensure that the timestamps for the block creation are correct.")).send()
             return false
         }
-
-        // Check proof-of-work. If not, send "INVALID_BLOCK_POW"
-        if (blockId >= this.obj.T) {
-            (new ErrorMessage(this.socket, "INVALID_BLOCK_POW", `Block ID ${blockId} should be less than ${this.obj.T}`)).send()
-            return false
-        }        
+        
         // Check transactions in DB after coinbase
         for (const txid of this.obj.txids) {
             if(!await exists_in_db(txid)) {
@@ -215,7 +216,7 @@ class BlockObject extends MarabuObject {
         return obj && (
             Array.isArray(obj.txids) &&
             obj.txids.every((txid) => isValidId(txid)) &&
-            isValidId(obj.nonce) && 
+            // isValidId(obj.nonce) && 
             (isValidId(obj.previd) || obj.previd == null) &&
             obj.T === (config.debug ? DEBUG_DIFFICULTY : PROD_DIFFICULTY)  &&
             (!obj.hasOwnProperty("miner") || isValidAscii(obj.miner)) &&
