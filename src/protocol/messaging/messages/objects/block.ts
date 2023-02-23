@@ -13,10 +13,10 @@ import { canonicalize } from "json-canonicalize";
 import { config } from "../../../../config";
 
 const GENESIS_ID = "0000000052a0e645eca917ae1c196e0d0a4fb756747f29ef52594d68484bb5e2"
-const TRANSACTION_TIMEOUT : number = 1000 // Timeout to get the txn's from a peer
+const TRANSACTION_TIMEOUT : number = 350 // Timeout to get the txn's from a peer
 const PROD_DIFFICULTY = "00000000abc00000000000000000000000000000000000000000000000000000"
-// Set this to be higher than txn timeout
-const ANCESTOR_RETRIEVAL_TIMEOUT : number = 10000
+// Can retrieve a maximum of approximately ANCESTOR_RETRIEVAL_TIMEOUT / TRANSACTION_TIMEOUT blocks, with some hiccups
+const ANCESTOR_RETRIEVAL_TIMEOUT : number = 4500
 // Use this one for testing
 const DEBUG_DIFFICULTY = "1000000000000000000000000000000000000000000000000000000000000000"
 
