@@ -1,4 +1,4 @@
-import {TransactionInput, TransactionOutput, isTransactionInput, isTransactionOutput} from "./building_blocks"
+import {TransactionInput, TransactionOutput, isTransactionInput, isTransactionOutput, TransactionPointer, getTransactionOutpoints} from "./building_blocks"
 import { MarabuObject } from "./object_type"
 import {exists_in_db, get_from_db} from "../../../../util/object_database"
 import {ErrorMessage} from "../error"
@@ -21,6 +21,8 @@ class TransactionPaymentObject extends MarabuObject {
         }
         let to_sign_message : string = canonicalize(transaction_deepcopy)
         let input_sum : number = 0
+        let cur_outpoints: Set<string> = this.blockchain_state.mempool_state
+
         for(const input of this.obj.inputs) {
             let txid : string = input.outpoint.txid
             // Check to see if input transaction point back to a valid transaction
@@ -43,6 +45,12 @@ class TransactionPaymentObject extends MarabuObject {
                 return false 
             }
             input_sum += output_transaction.outputs[input.outpoint.index].value
+
+            // Check if transaction double spends with mempool
+            if (!TransactionPaymentObject.outpointInMempool(input.outpoint, cur_outpoints)) {
+                (new ErrorMessage(this.socket, "INVALID_TX_OUTPOINT", `${input.outpoint.index} >= ${output_transaction.outputs.length}`)).send()
+                return false
+            }
         }
         // Verify conservation
         let output_sum : number = this.obj.outputs.map((output) => output.value).reduce((prev, curr) => prev+curr)
@@ -50,11 +58,24 @@ class TransactionPaymentObject extends MarabuObject {
             (new ErrorMessage(this.socket, "INVALID_TX_CONSERVATION", `Input sum is ${input_sum}, output sum is ${output_sum}`)).send()
             return false
         }
+
+        const txid: string = MarabuObject.get_object_id(this.obj)
+        // Add txn to mempool after it is validated
+        this.blockchain_state.mempool.push(txid)
+
+        // Add the outpoints of this transaction to the mempool state
+        const new_utxos: Set<string> = getTransactionOutpoints(this.obj, txid)
+        new_utxos.forEach(utxo => this.blockchain_state.mempool_state.add(utxo))
+        
         return true
     }
 
     static isThisObject(obj : any) : obj is TransactionPayment {
         return obj && (typeof obj.type == "string") && (obj.type == "transaction") && Array.isArray(obj.inputs) && obj.inputs.every((inp) => isTransactionInput(inp)) && Array.isArray(obj.outputs) && obj.outputs.every((output) => isTransactionOutput(output))
+    }
+
+    static outpointInMempool(outpoint: TransactionPointer, mempoolState: Set<string>): Boolean {
+        return mempoolState.has(canonicalize(outpoint))
     }
 }
 

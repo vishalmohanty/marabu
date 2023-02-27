@@ -1,4 +1,4 @@
-import {isValidId, isValidAscii, TransactionOutput, isTransactionInput, isTransactionOutput, TransactionPointer} from "./building_blocks"
+import {isValidId, isValidAscii, TransactionOutput, isTransactionInput, isTransactionOutput, TransactionPointer, getTransactionOutpoints} from "./building_blocks"
 import { MarabuObject } from "./object_type"
 import {ErrorMessage} from "../error"
 import { exists_in_db, get_from_db, put_in_db } from "../../../../util/object_database";
@@ -11,6 +11,7 @@ import { TransactionCoinbase, TransactionCoinbaseObject } from "./transaction_co
 import { TransactionPayment, TransactionPaymentObject } from "./transaction_payment";
 import { canonicalize } from "json-canonicalize";
 import { config } from "../../../../config";
+import { BlockchainState } from "../../../state/blockchain_state";
 
 const GENESIS_ID = "0000000052a0e645eca917ae1c196e0d0a4fb756747f29ef52594d68484bb5e2"
 const TRANSACTION_TIMEOUT : number = 350 // Timeout to get the txn's from a peer
@@ -111,11 +112,16 @@ class BlockObject extends MarabuObject {
         let utxos : Array<string> = await get_from_utxo_db(this.obj.previd)
         let utxo_set : Set<string> = new Set(utxos)
 
+        // Store the input oupoints for every transaction in the block.
+        // We'll use this to update our mempool_state
+        let input_txn_outpoints: Set<TransactionPointer> = new Set()
+
+        let coinbase_present = false
+
         if(this.obj.txids.length > 0) {
             // Check to make sure at most 1 coinbase and it is at txid @ 0
             let maybe_coinbase_txid = this.obj.txids[0]
             let maybe_coinbase_tx = await get_from_db(maybe_coinbase_txid)
-            let coinbase_present = false
             let coinbase_amount = 0
             if(TransactionCoinbaseObject.isThisObject(maybe_coinbase_tx)) {
                 if(maybe_coinbase_tx.outputs.length == 0) {
@@ -156,6 +162,7 @@ class BlockObject extends MarabuObject {
                     let tx : TransactionCoinbase | TransactionPayment = await get_from_db(input_tx.outpoint.txid)
                     total_input += tx.outputs[input_tx.outpoint.index].value
                     utxo_set.delete(canonicalize(input_tx.outpoint))
+                    input_txn_outpoints.add(input_tx.outpoint)
                 }
                 // All the outputs of this transaction become UTXOs
                 for(const [index, output_tx] of txn.outputs.entries()) {
@@ -204,6 +211,38 @@ class BlockObject extends MarabuObject {
 
         // Check if this is max height and update chaintip if it is
         if(new_height > this.blockchain_state.chain_length) {
+            
+            // When chaintip is updated, set the mempool_state to the UTXO set
+            this.blockchain_state.mempool_state = structuredClone(utxo_set)
+
+            // If reorg happens, need to apply all transactions in the older fork
+            if (this.obj.previd != this.blockchain_state.chaintip) {
+                // Get the blocks in the new chain ending at this block
+                let blocksInChain: Set<string> = await this.getBlocksInChain(blockId)
+
+                // Find the first block in the old fork that has previous
+                // block in the blocksInChain
+                let fork: Array<Block> = await this.getForkFromChain(this.blockchain_state.chaintip, blocksInChain)
+
+                // Apply the transactions in the blocks in the fork
+                for (const block_id in fork) {
+                    let fork_block: Block = await get_from_db(block_id)
+                    for (const txid of fork_block.txids) {
+                        let txn = await get_from_db(txid)
+                        if (TransactionPaymentObject.isThisObject(txn)) {
+                            await this.addTxnToMempool(txid, this.blockchain_state)
+                        }
+                    }
+                }
+            } else {
+                // Else when the chain grows on top of the current chaintip,
+                // we apply the transactions from the current mempool
+                // and update the mempool state after each transaction
+                for (const txid of this.obj.txids.slice(coinbase_present ? 1 : 0)) {
+                    await this.addTxnToMempool(txid, this.blockchain_state)
+                }
+            }
+
             this.blockchain_state.chain_length = new_height
             this.blockchain_state.chaintip = blockId
             console.log(`Setting a new chaintip to ${blockId}, new height is ${new_height}`)
@@ -224,6 +263,44 @@ class BlockObject extends MarabuObject {
             ((obj.studentids == undefined) ||
             (Array.isArray(obj.studentids) && obj.studentids.every((id) => isValidAscii(id))))
         )
+    }
+
+    async getBlocksInChain(blockId: string): Promise<Set<string>> {
+        if (blockId == GENESIS_ID) {
+            let chain: Set<string> = new Set()
+            chain.add(blockId)
+            return chain
+        }
+        let block: Block = await get_from_db(blockId)
+        let chain: Set<string> = await this.getBlocksInChain(block.previd)
+        chain.add(blockId)
+        return chain
+    }
+
+    async getForkFromChain(blockId: string, chainSet: Set<string>): Promise<Array<Block>> {
+        if (chainSet.has(blockId) || blockId == null) {
+            return new Array()
+        }
+        let block: Block = await get_from_db(blockId)
+        let arr: Array<Block> = await this.getForkFromChain(block.previd, chainSet)
+        arr.push(block)
+        return arr
+    }
+
+    async addTxnToMempool(txid: string, blockchain_state: BlockchainState) {
+        let txn: TransactionPayment = await get_from_db(txid)
+        let isValid: boolean = true
+        for (const inp of txn.inputs) {
+            if (!blockchain_state.mempool_state.has(canonicalize(inp.outpoint))) {
+                isValid = false
+                break
+            }
+        }
+        if (isValid) {
+            blockchain_state.mempool.push(txid)
+            const new_utxos: Set<string> = getTransactionOutpoints(txn, txid)
+            new_utxos.forEach(utxo => blockchain_state.mempool_state.add(utxo))
+        }
     }
 }
 

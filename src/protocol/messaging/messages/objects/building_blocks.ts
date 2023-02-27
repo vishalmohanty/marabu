@@ -1,3 +1,6 @@
+import { TransactionPayment } from "./transaction_payment"
+import { canonicalize } from "json-canonicalize";
+
 let hex_chars = new Set(["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"])
 
 function is_all_hex(s : string) {
@@ -41,4 +44,17 @@ function isTransactionOutput(obj : any) : obj is TransactionInput {
     return obj && (typeof obj.pubkey == "string") && (obj.pubkey.length == 64) && (is_all_hex(obj.pubkey)) && (typeof obj.value == "number") && (obj.value >= 0)
 }
 
-export {isValidAscii, isValidId, TransactionPointer, isTransactionPointer, TransactionInput, isTransactionInput, TransactionOutput, isTransactionOutput}
+function getTransactionOutpoints(txn: TransactionPayment, txid: string): Set<string> {
+    let utxos: Set<string> = new Set()
+    // Add the outpoints of this transaction to the mempool state
+    for (const [index, output_tx] of txn.outputs.entries()) {
+        let new_utxo = {
+            txid: txid,
+            index: index
+        };
+        utxos.add(canonicalize(new_utxo))
+    }
+    return utxos
+}
+
+export {isValidAscii, isValidId, TransactionPointer, isTransactionPointer, TransactionInput, isTransactionInput, TransactionOutput, isTransactionOutput, getTransactionOutpoints}

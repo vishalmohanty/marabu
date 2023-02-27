@@ -8,6 +8,7 @@ import { create_hello_message, HelloMessage } from "./protocol/messaging/message
 import { create_get_peers_message } from "./protocol/messaging/messages/getpeers";
 import { MarabuSocket } from "./util/marabu_socket";
 import { create_get_chaintip_message } from "./protocol/messaging/messages/getchaintip";
+import { create_get_mempool_message } from "./protocol/messaging/messages/getmempool"
 import {config} from "./config"
 
 let PORT : Number = 18018
@@ -110,6 +111,7 @@ for(const peer of blockchain_state.get_peers().slice(0, 10)) {
                 }
                 create_get_peers_message(marabu_client_socket, blockchain_state).run_send_actions()
                 create_get_chaintip_message(marabu_client_socket, blockchain_state).run_send_actions()
+                create_get_mempool_message(marabu_client_socket, blockchain_state).run_send_actions()
                 handshake_completed = true
             } else {
                 // TODO: Same as above for message type
