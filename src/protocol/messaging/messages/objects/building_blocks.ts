@@ -57,4 +57,16 @@ function getTransactionOutpoints(txn: TransactionPayment, txid: string): Set<str
     return utxos
 }
 
-export {isValidAscii, isValidId, TransactionPointer, isTransactionPointer, TransactionInput, isTransactionInput, TransactionOutput, isTransactionOutput, getTransactionOutpoints}
+function getTransactionInpoints(txn: TransactionPayment, txid: string): Set<string> {
+    let utxos: Set<string> = new Set()
+    for (const input of txn.inputs) {
+        let old_utxo = {
+            txid: input.outpoint.txid,
+            index: input.outpoint.index
+        };
+        utxos.add(canonicalize(old_utxo))
+    }
+    return utxos
+}
+
+export {isValidAscii, isValidId, TransactionPointer, isTransactionPointer, TransactionInput, isTransactionInput, TransactionOutput, isTransactionOutput, getTransactionOutpoints, getTransactionInpoints}

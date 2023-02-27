@@ -7,6 +7,9 @@ import {IHaveObjectMessage} from "./messages/ihaveobject"
 import {GetChaintipMessage} from "./messages/getchaintip"
 import { Message } from "./message_types/message";
 import { ChaintipMessage } from "./messages/chaintip"
+import { GetMempoolMessage } from "./messages/getmempool"
+import { MempoolMessage } from "./messages/mempool"
+
 
 class StubMessage extends Message {
     type: string = "STUB";
@@ -26,7 +29,8 @@ let selector = {
     "object": ObjectMessage,
     "getobject": GetObjectMessage,
     "ihaveobject": IHaveObjectMessage,
-    "getmempool": StubMessage,
+    "getmempool": GetMempoolMessage,
+    "mempool": MempoolMessage,
     "getchaintip": GetChaintipMessage,
     "error": StubMessage,
     "chaintip": ChaintipMessage

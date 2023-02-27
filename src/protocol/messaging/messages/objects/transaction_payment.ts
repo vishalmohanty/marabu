@@ -1,4 +1,4 @@
-import {TransactionInput, TransactionOutput, isTransactionInput, isTransactionOutput, TransactionPointer, getTransactionOutpoints} from "./building_blocks"
+import {TransactionInput, TransactionOutput, isTransactionInput, isTransactionOutput, TransactionPointer, getTransactionOutpoints, getTransactionInpoints} from "./building_blocks"
 import { MarabuObject } from "./object_type"
 import {exists_in_db, get_from_db} from "../../../../util/object_database"
 import {ErrorMessage} from "../error"
@@ -48,7 +48,7 @@ class TransactionPaymentObject extends MarabuObject {
 
             // Check if transaction double spends with mempool
             if (!TransactionPaymentObject.outpointInMempool(input.outpoint, cur_outpoints)) {
-                (new ErrorMessage(this.socket, "INVALID_TX_OUTPOINT", `${input.outpoint.index} >= ${output_transaction.outputs.length}`)).send()
+                (new ErrorMessage(this.socket, "INVALID_TX_OUTPOINT", `Not valid according to our mempool`)).send()
                 return false
             }
         }
@@ -66,6 +66,10 @@ class TransactionPaymentObject extends MarabuObject {
         // Add the outpoints of this transaction to the mempool state
         const new_utxos: Set<string> = getTransactionOutpoints(this.obj, txid)
         new_utxos.forEach(utxo => this.blockchain_state.mempool_state.add(utxo))
+
+        // Remove the used outpoints
+        const remove_utxos: Set<string> = getTransactionInpoints(this.obj, txid)
+        remove_utxos.forEach(utxo => this.blockchain_state.mempool_state.delete(utxo))
         
         return true
     }

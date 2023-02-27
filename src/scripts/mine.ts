@@ -81,6 +81,20 @@ function print_object(obj) {
     console.log(canonicalize({"object": obj, "type": "object"}))
 }
 
+function get_canonical_uint8(obj) {
+    return Uint8Array.from(Buffer.from(canonicalize(obj)))
+}
+
+function uint8_to_string(arr : Uint8Array) : string {
+    return Buffer.from(arr).toString("hex")
+}
+
+async function sign_single_input_transaction(transaction_obj : any, private_key : Uint8Array) {
+    let signature : string = uint8_to_string(await ed25519.sign(get_canonical_uint8(transaction_obj), private_key))
+    transaction_obj.inputs[0].sig = signature
+    return transaction_obj
+}
+
 // async function print_block(previd, timestamp=Date.now(), coinbase_height=1) {
 //     // Create a new coinbase transaction paying a private key we know
 //     let private_key = ed25519.utils.randomPrivateKey()
@@ -132,4 +146,4 @@ function print_object(obj) {
 //     console.log(canonicalize({"object": mined_obj, "type": "object"}))
 // }
 
-export {print_object, create_block, compute_hash, create_coinbase_transaction, create_payment_transaction}
+export {print_object, create_block, compute_hash, create_coinbase_transaction, create_payment_transaction, sign_single_input_transaction, GENESIS_BLOCK}
