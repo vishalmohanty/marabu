@@ -21,7 +21,6 @@ class BlockchainState {
     get_peers() : Array<string> {
         // TEMPORARY: Only solution peer
         // return ["45.63.84.226:18018"]
-        return []
         return this.peers.read()
     }
     add_peer(peer : string) {

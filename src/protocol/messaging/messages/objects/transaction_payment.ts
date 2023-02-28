@@ -74,8 +74,12 @@ class TransactionPaymentObject extends MarabuObject {
             remove_utxos.forEach(utxo => this.blockchain_state.mempool_state.delete(utxo))
         }
         
-        // Only gossip if we added to mempool
-        return valid_in_mempool
+        // Hack, we need to add to DB manually so add_object in run_receive returns false and we don't gossip
+        if(!valid_in_mempool) {
+            await this.add_object()
+        }
+        
+        return true
     }
 
     static isThisObject(obj : any) : obj is TransactionPayment {
