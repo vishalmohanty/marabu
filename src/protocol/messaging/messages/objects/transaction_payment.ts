@@ -49,7 +49,7 @@ class TransactionPaymentObject extends MarabuObject {
             // Check if transaction double spends with mempool
             if (!TransactionPaymentObject.outpointInMempool(input.outpoint, cur_outpoints)) {
                 (new ErrorMessage(this.socket, "INVALID_TX_OUTPOINT", `Not valid according to our mempool`)).send()
-                return false
+                // return false
             }
         }
         // Verify conservation

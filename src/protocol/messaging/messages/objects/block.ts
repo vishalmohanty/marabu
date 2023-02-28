@@ -211,6 +211,10 @@ class BlockObject extends MarabuObject {
 
         // Check if this is max height and update chaintip if it is
         if(new_height > this.blockchain_state.chain_length) {
+
+            // Empty the mempool
+            let old_mempool = structuredClone(this.blockchain_state.mempool)
+            this.blockchain_state.mempool = new Array<string>()
             
             // When chaintip is updated, set the mempool_state to the UTXO set
             this.blockchain_state.mempool_state = structuredClone(utxo_set)
@@ -218,15 +222,20 @@ class BlockObject extends MarabuObject {
             // If reorg happens, need to apply all transactions in the older fork
             if (this.obj.previd != this.blockchain_state.chaintip) {
                 // Get the blocks in the new chain ending at this block
-                let blocksInChain: Set<string> = await this.getBlocksInChain(blockId)
+                console.log("getting blocks in chain")
+                let blocksInChain: Set<string> = await this.getBlocksInChain(this.obj.previd)
+                blocksInChain.add(blockId)
+                console.log("blocks in chain: ", blocksInChain)
 
                 // Find the first block in the old fork that has previous
                 // block in the blocksInChain
+                console.log("getting fork")
                 let fork: Array<Block> = await this.getForkFromChain(this.blockchain_state.chaintip, blocksInChain)
+                console.log("fork: ", fork)
 
                 // Apply the transactions in the blocks in the fork
-                for (const block_id in fork) {
-                    let fork_block: Block = await get_from_db(block_id)
+                for (const fork_block of fork) {
+                    // let fork_block: Block = await get_from_db(block_id)
                     for (const txid of fork_block.txids) {
                         let txn = await get_from_db(txid)
                         if (TransactionPaymentObject.isThisObject(txn)) {
@@ -234,13 +243,13 @@ class BlockObject extends MarabuObject {
                         }
                     }
                 }
-            } else {
-                // Else when the chain grows on top of the current chaintip,
-                // we apply the transactions from the current mempool
-                // and update the mempool state after each transaction
-                for (const txid of this.obj.txids.slice(coinbase_present ? 1 : 0)) {
-                    await this.addTxnToMempool(txid, this.blockchain_state)
-                }
+            }
+            console.log("After re-org")
+            // When the chain grows on top of the current chaintip,
+            // we apply the transactions from the current mempool
+            // and update the mempool state after each transaction
+            for (const txid of old_mempool) {
+                await this.addTxnToMempool(txid, this.blockchain_state)
             }
 
             this.blockchain_state.chain_length = new_height
@@ -288,19 +297,17 @@ class BlockObject extends MarabuObject {
     }
 
     async addTxnToMempool(txid: string, blockchain_state: BlockchainState) {
+        console.log("Adding txn ", txid, " to mempool")
         let txn: TransactionPayment = await get_from_db(txid)
-        let isValid: boolean = true
         for (const inp of txn.inputs) {
             if (!blockchain_state.mempool_state.has(canonicalize(inp.outpoint))) {
-                isValid = false
-                break
+                return
             }
         }
-        if (isValid) {
-            blockchain_state.mempool.push(txid)
-            const new_utxos: Set<string> = getTransactionOutpoints(txn, txid)
-            new_utxos.forEach(utxo => blockchain_state.mempool_state.add(utxo))
-        }
+        blockchain_state.mempool.push(txid)
+        const new_utxos: Set<string> = getTransactionOutpoints(txn, txid)
+        new_utxos.forEach(utxo => blockchain_state.mempool_state.add(utxo))
+        console.log("Added txn ", txid, " to mempool")
     }
 }
 

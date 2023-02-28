@@ -27,6 +27,17 @@ async function run() {
     let transaction_2 = create_payment_transaction({inputs : [{"outpoint": {"txid": compute_hash(coinbase_1), "index": 0}, "sig": null}], outputs: [{"pubkey": pubkey_to_string(public_key), "value": 30000000000}]})
     transaction_2 = await sign_single_input_transaction(transaction_2, private_key)
     print_object(transaction_2)
+
+    console.log("====== Add a new block that conflicts and empties the mempool")
+    let block_2 = create_block({ previd: compute_hash(block_1), txids: [compute_hash(transaction_2)], created: Date.now()/1000})
+    print_object(block_2)
+
+    console.log("======== Create new fork to reorg")
+    
+    let block_3 = create_block({ previd: compute_hash(block_1), txids: [], created: Date.now()/1000})
+    print_object(block_3)
+    let block_4 = create_block({ previd: compute_hash(block_3), txids: [], created: Date.now()/1000})
+    print_object(block_4)
 }
 
 run()
