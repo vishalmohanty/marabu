@@ -15,6 +15,7 @@ interface TransactionPayment {
 class TransactionPaymentObject extends MarabuObject {
     obj : TransactionPayment
     async _verify() : Promise<Boolean> {
+        let valid_in_mempool = true
         let transaction_deepcopy : TransactionPayment = JSON.parse(JSON.stringify(this.obj))
         for(const input of transaction_deepcopy.inputs) {
             input.sig = null
@@ -49,7 +50,7 @@ class TransactionPaymentObject extends MarabuObject {
             // Check if transaction double spends with mempool
             if (!TransactionPaymentObject.outpointInMempool(input.outpoint, cur_outpoints)) {
                 (new ErrorMessage(this.socket, "INVALID_TX_OUTPOINT", `Not valid according to our mempool`)).send()
-                // return false
+                valid_in_mempool = false
             }
         }
         // Verify conservation
@@ -59,19 +60,22 @@ class TransactionPaymentObject extends MarabuObject {
             return false
         }
 
-        const txid: string = MarabuObject.get_object_id(this.obj)
-        // Add txn to mempool after it is validated
-        this.blockchain_state.mempool.push(txid)
+        if(valid_in_mempool) {
+            const txid: string = MarabuObject.get_object_id(this.obj)
+            // Add txn to mempool after it is validated
+            this.blockchain_state.mempool.push(txid)
 
-        // Add the outpoints of this transaction to the mempool state
-        const new_utxos: Set<string> = getTransactionOutpoints(this.obj, txid)
-        new_utxos.forEach(utxo => this.blockchain_state.mempool_state.add(utxo))
+            // Add the outpoints of this transaction to the mempool state
+            const new_utxos: Set<string> = getTransactionOutpoints(this.obj, txid)
+            new_utxos.forEach(utxo => this.blockchain_state.mempool_state.add(utxo))
 
-        // Remove the used outpoints
-        const remove_utxos: Set<string> = getTransactionInpoints(this.obj, txid)
-        remove_utxos.forEach(utxo => this.blockchain_state.mempool_state.delete(utxo))
+            // Remove the used outpoints
+            const remove_utxos: Set<string> = getTransactionInpoints(this.obj, txid)
+            remove_utxos.forEach(utxo => this.blockchain_state.mempool_state.delete(utxo))
+        }
         
-        return true
+        // Only gossip if we added to mempool
+        return valid_in_mempool
     }
 
     static isThisObject(obj : any) : obj is TransactionPayment {
