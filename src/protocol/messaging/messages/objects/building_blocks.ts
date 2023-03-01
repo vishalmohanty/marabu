@@ -60,11 +60,7 @@ function getTransactionOutpoints(txn: TransactionPayment, txid: string): Set<str
 function getTransactionInpoints(txn: TransactionPayment, txid: string): Set<string> {
     let utxos: Set<string> = new Set()
     for (const input of txn.inputs) {
-        let old_utxo = {
-            txid: input.outpoint.txid,
-            index: input.outpoint.index
-        };
-        utxos.add(canonicalize(old_utxo))
+        utxos.add(canonicalize(input.outpoint))
     }
     return utxos
 }
