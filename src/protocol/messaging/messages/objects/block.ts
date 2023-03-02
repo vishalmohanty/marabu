@@ -11,13 +11,12 @@ import { TransactionCoinbase, TransactionCoinbaseObject } from "./transaction_co
 import { TransactionPayment, TransactionPaymentObject } from "./transaction_payment";
 import { canonicalize } from "json-canonicalize";
 import { config } from "../../../../config";
-import { BlockchainState } from "../../../state/blockchain_state";
 
 const GENESIS_ID = "0000000052a0e645eca917ae1c196e0d0a4fb756747f29ef52594d68484bb5e2"
-const TRANSACTION_TIMEOUT : number = 350 // Timeout to get the txn's from a peer
+const TRANSACTION_TIMEOUT : number = 100 // Timeout to get the txn's from a peer
 const PROD_DIFFICULTY = "00000000abc00000000000000000000000000000000000000000000000000000"
 // Can retrieve a maximum of approximately ANCESTOR_RETRIEVAL_TIMEOUT / TRANSACTION_TIMEOUT blocks, with some hiccups
-const ANCESTOR_RETRIEVAL_TIMEOUT : number = 4500
+const ANCESTOR_RETRIEVAL_TIMEOUT : number = 5000
 // Use this one for testing
 const DEBUG_DIFFICULTY = "1000000000000000000000000000000000000000000000000000000000000000"
 
@@ -55,8 +54,8 @@ class BlockObject extends MarabuObject {
             gossip(create_get_object_message, this.blockchain_state, this.obj.previd)
             // A little hacky
             // Wait for ANCESTOR_RETRIEVAL_TIMEOUT milliseconds
-            for(let i=0; i < 10; i++) {
-                await wait(ANCESTOR_RETRIEVAL_TIMEOUT/10)
+            for(let i=0; i < 40; i++) {
+                await wait(ANCESTOR_RETRIEVAL_TIMEOUT/40)
                 if(await exists_in_db(this.obj.previd)) {
                     // Found
                     return true

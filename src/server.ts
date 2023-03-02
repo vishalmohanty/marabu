@@ -45,6 +45,7 @@ server.on("connection", function(socket : Socket) {
     create_hello_message(marabu_socket, blockchain_state).run_send_actions()
     create_get_peers_message(marabu_socket, blockchain_state).run_send_actions()
     create_get_chaintip_message(marabu_socket, blockchain_state).run_send_actions()
+    create_get_mempool_message(marabu_socket, blockchain_state).run_send_actions()
     marabu_socket.socket.on('data', function(chunk : Buffer) {
         for(const defragmented of json_defragmenter.feed(chunk)) {
             if(!run_initial_checks(marabu_socket, defragmented)) {
