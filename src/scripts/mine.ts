@@ -16,17 +16,35 @@ let GENESIS_BLOCK = {
 const DIFFICULTY = "1000000000000000000000000000000000000000000000000000000000000000"
 const GENESIS_ID = "0000000052a0e645eca917ae1c196e0d0a4fb756747f29ef52594d68484bb5e2"
 
+let hash = (Math.pow(16, 100)).toString(16)
+
 function compute_hash(obj) {
+    // const t1 = Date.now();
     let h = createHash("blake2s")
-    h.update(Buffer.from(canonicalize(obj)))
+    // console.log(`Hash time ${Date.now() - t1}`)
+    // const t2 = Date.now();
+    // h.update(Buffer.from(canonicalize(obj)))
+    // Stringify for speed
+    h.update(Buffer.from(JSON.stringify(obj)))
+    // console.log(`Update time ${Date.now() - t2}`)
+    // const t3 = Date.now();
     let hash : string = h.digest("hex")
+    // console.log(`Digest time ${Date.now() - t3}`)
     return hash
 }
 
-function mine(obj) {
-    while(compute_hash(obj) > obj.T) {
-        let new_nonce = (parseInt(obj.nonce, 16) + 1).toString(16)
+function mine(obj, max_hashes=Infinity) {
+    let nonce = parseInt(obj.nonce, 16)
+    const difficulty = obj.T
+    while((compute_hash(obj) > difficulty) && (max_hashes > 0)) {
+        // const t1 = Date.now();
+        let new_nonce = nonce.toString(16)
+        // console.log(`To String time ${Date.now() - t1}`)
+        // const t2 = Date.now();
         obj.nonce = "0".repeat(64-new_nonce.length) + new_nonce
+        // console.log(`Add strings time ${Date.now() - t2}`)
+        nonce += 1
+        max_hashes -= 1
     }
     return obj
 }
@@ -146,4 +164,4 @@ async function sign_single_input_transaction(transaction_obj : any, private_key 
 //     console.log(canonicalize({"object": mined_obj, "type": "object"}))
 // }
 
-export {print_object, create_block, compute_hash, create_coinbase_transaction, create_payment_transaction, sign_single_input_transaction, GENESIS_BLOCK}
+export {print_object, create_block, compute_hash, create_coinbase_transaction, create_payment_transaction, sign_single_input_transaction, mine, GENESIS_BLOCK, GENESIS_ID, DIFFICULTY}

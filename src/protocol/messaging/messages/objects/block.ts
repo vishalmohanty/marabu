@@ -11,6 +11,8 @@ import { TransactionCoinbase, TransactionCoinbaseObject } from "./transaction_co
 import { TransactionPayment, TransactionPaymentObject } from "./transaction_payment";
 import { canonicalize } from "json-canonicalize";
 import { config } from "../../../../config";
+import { create_coinbase_transaction } from "../../../../scripts/mine";
+import { create_i_have_object_message } from "../ihaveobject";
 
 const GENESIS_ID = "0000000052a0e645eca917ae1c196e0d0a4fb756747f29ef52594d68484bb5e2"
 const TRANSACTION_TIMEOUT : number = 100 // Timeout to get the txn's from a peer
@@ -62,7 +64,7 @@ class BlockObject extends MarabuObject {
                 }
             }
             // If we didn't get it yet, we should send error and stop processing this object/
-            (new ErrorMessage(this.socket, "UNFINDABLE_OBJECT", "Couldn't find parent chain")).send()
+            (new ErrorMessage(this.socket, "UNFINDABLE_OBJECT", `Couldn't find parent chain for ${blockId}`)).send()
             return false
         }
         // Already in db, so we have parent block and it is successfully verified
@@ -254,6 +256,29 @@ class BlockObject extends MarabuObject {
             this.blockchain_state.chain_length = new_height
             this.blockchain_state.chaintip = blockId
             console.log(`Setting a new chaintip to ${blockId}, new height is ${new_height}`)
+            // Send golang miner code new block to mine on top off
+            if(this.blockchain_state.golang_socket != null) {
+                let starting_nonce : string = (Math.random()*Math.pow(2, 256)).toString(16)
+                console.log(`Starting nonce ${starting_nonce}`)
+                starting_nonce = "0".repeat(64-starting_nonce.length) + starting_nonce
+                let coinbase_txn = create_coinbase_transaction({height: new_height, outputs: [{pubkey: "e54f6be504b8707bdea7e2a95bb10d17f378c761cc4409b3fdcca38d23646ed5", value: 50000000000000}]})
+                let coinbase_objectid = MarabuObject.get_object_id(coinbase_txn)
+                await put_in_db(coinbase_objectid, coinbase_txn)
+                gossip(create_i_have_object_message, this.blockchain_state, coinbase_objectid)
+                let new_block : Block = {
+                    type: "block",
+                    txids: [coinbase_objectid],
+                    nonce: starting_nonce,
+                    previd: blockId,
+                    created: Date.now() / 1000,
+                    T: PROD_DIFFICULTY,
+                    miner: "Definitely honest!",
+                    note: "Plz work",
+                    studentids: ["vmohanty", "sudeepn"]
+                }
+                console.log("Sending golang miner new block: ", new_block)
+                this.blockchain_state.golang_socket.write(JSON.stringify(new_block))
+            }
         }
 
         return true
@@ -263,6 +288,8 @@ class BlockObject extends MarabuObject {
         return obj && (
             Array.isArray(obj.txids) &&
             obj.txids.every((txid) => isValidId(txid)) &&
+            // TODO: Add this check back once TAs fix
+            // Number.isInteger(obj.created) &&
             // isValidId(obj.nonce) && 
             (isValidId(obj.previd) || obj.previd == null) &&
             (config.debug ? [DEBUG_DIFFICULTY, PROD_DIFFICULTY] : [PROD_DIFFICULTY]).indexOf(obj.T) != -1  &&

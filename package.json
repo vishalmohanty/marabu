@@ -1,7 +1,7 @@
 {
   "dependencies": {
     "@noble/ed25519": "^1.7.1",
-    "blake2": "^4.1.1",
+    "blake2": "^5.0.0",
     "is-valid-domain": "^0.1.6",
     "json-canonicalize": "^1.0.4",
     "level-ts": "^2.1.0",

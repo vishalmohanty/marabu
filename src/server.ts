@@ -1,4 +1,4 @@
-import {Server, Socket} from "net";
+import {Server, Socket, SocketAddress} from "net";
 import {JSONDefragmenter} from "./util/json_defragmenter"
 import {ErrorMessage} from "./protocol/messaging/messages/error"
 import {selector} from "./protocol/messaging/selector"
@@ -10,6 +10,15 @@ import { MarabuSocket } from "./util/marabu_socket";
 import { create_get_chaintip_message } from "./protocol/messaging/messages/getchaintip";
 import { create_get_mempool_message } from "./protocol/messaging/messages/getmempool"
 import {config} from "./config"
+import { gossip } from "./util/gossip";
+import { create_i_have_object_message } from "./protocol/messaging/messages/ihaveobject";
+import { create_object_message } from "./protocol/messaging/messages/object";
+import { get_from_db, put_in_db } from "./util/object_database";
+import { MarabuObject } from "./protocol/messaging/messages/objects/object_type";
+import { create_coinbase_transaction } from "./scripts/mine";
+import { Block } from "./protocol/messaging/messages/objects/block";
+
+const PROD_DIFFICULTY = "00000000abc00000000000000000000000000000000000000000000000000000"
 
 let PORT : Number = 18018
 let BACKING_FILE_NAME : string = "src/protocol/state/data.json"
@@ -124,3 +133,35 @@ for(const peer of blockchain_state.get_peers().slice(0, 10)) {
     })
     marabu_client_socket.socket.on("error", ()=>{console.log(`Wasn't able to connect to a client at ${host_ip}:${port}.`)})
 }
+
+let golang_server = new Server()
+const GOLANG_PORT = 19000
+golang_server.listen(GOLANG_PORT, () => `Server also listening on port ${GOLANG_PORT}`)
+golang_server.on("connection", function(socket : Socket) {
+    blockchain_state.golang_socket = socket
+    console.log("Received golang connection\n")
+    // Copy pasted for now....
+    let starting_nonce : string = (Math.random()*Math.pow(2, 256)).toString(16)
+    console.log(`Starting nonce ${starting_nonce}`)
+    starting_nonce = "0".repeat(64-starting_nonce.length) + starting_nonce
+    let coinbase_txn = create_coinbase_transaction({height: blockchain_state.chain_length+1, outputs: [{pubkey: "e54f6be504b8707bdea7e2a95bb10d17f378c761cc4409b3fdcca38d23646ed5", value: 50000000000000}]})
+    let coinbase_objectid = MarabuObject.get_object_id(coinbase_txn)
+    put_in_db(coinbase_objectid, coinbase_txn).then(() => gossip(create_i_have_object_message, this.blockchain_state, coinbase_objectid))
+    let new_block : Block = {
+        type: "block",
+        txids: [coinbase_objectid],
+        nonce: starting_nonce,
+        previd: blockchain_state.chaintip,
+        created: Date.now() / 1000,
+        T: PROD_DIFFICULTY,
+        miner: "Definitely honest!",
+        note: "Plz work",
+        studentids: ["vmohanty", "sudeepn"]
+    }
+    socket.write(JSON.stringify(new_block))
+    // Assume non-fragmented complete data
+    socket.on("data", function(data : Buffer) {
+        let block = JSON.parse(data.toString("utf-8"))
+        gossip(create_object_message, blockchain_state, block)
+    })
+})

@@ -1,3 +1,4 @@
+import { Socket } from "net";
 import { TransactionPointer } from "../messaging/messages/objects/building_blocks";
 import { NonvolatileState } from "./nonvolatile";
 
@@ -9,6 +10,7 @@ class BlockchainState {
     objectid_handled : Set<String>
     mempool: Array<string>
     mempool_state: Set<string>
+    golang_socket : Socket
     constructor(backing_file_name : string) {
         this.peers = new NonvolatileState(backing_file_name, "peers")
         // Start out with genesis
@@ -17,10 +19,10 @@ class BlockchainState {
         this.objectid_handled = new Set()
         this.mempool = new Array<string>()
         this.mempool_state = new Set()
+        this.golang_socket = null
     }
     get_peers() : Array<string> {
         // TEMPORARY: Only solution peer
-        // return ["45.63.84.226:18018"]
         return this.peers.read()
     }
     add_peer(peer : string) {

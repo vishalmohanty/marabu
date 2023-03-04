@@ -33,6 +33,7 @@ class ObjectMessage extends Message {
             console.log("Returning cause already handled object ", object_id)
             return
         }
+        // Prevent double handling
         this.blockchain_state.objectid_handled.add(object_id)
         // Object lifecycle
         let selected_class = object_selector(this.obj.object)
