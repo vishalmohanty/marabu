@@ -210,9 +210,15 @@ class BlockObject extends MarabuObject {
         let new_height = (await get_from_height_db(this.obj.previd))+1
         await put_in_height_db(blockId, new_height)
 
-        // Check if this is max height and update chaintip if it is
-        if(new_height > this.blockchain_state.chain_length) {
+        return true
+    }
 
+    async post_receive_actions() {
+        // Check if this is max height and update chaintip if it is
+        let blockId = MarabuObject.get_object_id(this.obj)
+        let new_height = await get_from_height_db(blockId)
+        let utxo_set : Set<string> = new Set(await get_from_utxo_db(blockId))
+        if(new_height > this.blockchain_state.chain_length) {
             // Empty the mempool
             let old_mempool: Array<string> = structuredClone(this.blockchain_state.mempool)
             this.blockchain_state.mempool = new Array<string>()
@@ -257,39 +263,38 @@ class BlockObject extends MarabuObject {
             this.blockchain_state.chaintip = blockId
             console.log(`Setting a new chaintip to ${blockId}, new height is ${new_height}`)
             // Send golang miner code new block to mine on top off
-            if(this.blockchain_state.golang_socket != null) {
-                let starting_nonce : string = (Math.random()*Math.pow(2, 256)).toString(16)
-                console.log(`Starting nonce ${starting_nonce}`)
-                starting_nonce = "0".repeat(64-starting_nonce.length) + starting_nonce
-                let coinbase_txn = create_coinbase_transaction({height: new_height, outputs: [{pubkey: "e54f6be504b8707bdea7e2a95bb10d17f378c761cc4409b3fdcca38d23646ed5", value: 50000000000000}]})
-                let coinbase_objectid = MarabuObject.get_object_id(coinbase_txn)
-                await put_in_db(coinbase_objectid, coinbase_txn)
-                gossip(create_i_have_object_message, this.blockchain_state, coinbase_objectid)
-                let new_block : Block = {
-                    type: "block",
-                    txids: [coinbase_objectid],
-                    nonce: starting_nonce,
-                    previd: blockId,
-                    created: Date.now() / 1000,
-                    T: PROD_DIFFICULTY,
-                    miner: "Definitely honest!",
-                    note: "Plz work",
-                    studentids: ["vmohanty", "sudeepn"]
+            if(this.blockchain_state.golang_sockets != null) {
+                for(let golang_socket of this.blockchain_state.golang_sockets) {
+                    let starting_nonce : string = (Math.random()*Math.pow(2, 256)).toString(16)
+                    console.log(`Starting nonce ${starting_nonce}`)
+                    starting_nonce = "0".repeat(64-starting_nonce.length) + starting_nonce
+                    let coinbase_txn = create_coinbase_transaction({height: new_height, outputs: [{pubkey: "e54f6be504b8707bdea7e2a95bb10d17f378c761cc4409b3fdcca38d23646ed5", value: 50000000000000}]})
+                    let coinbase_objectid = MarabuObject.get_object_id(coinbase_txn)
+                    await put_in_db(coinbase_objectid, coinbase_txn)
+                    gossip(create_i_have_object_message, this.blockchain_state, coinbase_objectid)
+                    let new_block : Block = {
+                        type: "block",
+                        txids: [coinbase_objectid, "eaa145ad59622ab3e27e8ae3347232062f0284e7b47d0f7194ce7c8664069f0a"],
+                        nonce: starting_nonce,
+                        previd: blockId,
+                        created: Date.now() / 1000,
+                        T: PROD_DIFFICULTY,
+                        miner: "Definitely honest!",
+                        note: "Plz work",
+                        studentids: ["vmohanty", "sudeepn"]
+                    }
+                    console.log("Sending golang miner new block: ", new_block)
+                    golang_socket.write(JSON.stringify(new_block))
                 }
-                console.log("Sending golang miner new block: ", new_block)
-                this.blockchain_state.golang_socket.write(JSON.stringify(new_block))
             }
         }
-
-        return true
     }
 
     static isThisObject(obj : any) : obj is Block {
         return obj && (
             Array.isArray(obj.txids) &&
             obj.txids.every((txid) => isValidId(txid)) &&
-            // TODO: Add this check back once TAs fix
-            // Number.isInteger(obj.created) &&
+            Number.isInteger(obj.created) &&
             // isValidId(obj.nonce) && 
             (isValidId(obj.previd) || obj.previd == null) &&
             (config.debug ? [DEBUG_DIFFICULTY, PROD_DIFFICULTY] : [PROD_DIFFICULTY]).indexOf(obj.T) != -1  &&

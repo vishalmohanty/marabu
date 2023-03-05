@@ -2,10 +2,11 @@ package main
 
 import (
 	"encoding/hex"
+	"net"
+	"runtime"
 
 	"encoding/json"
 	"fmt"
-	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -17,9 +18,8 @@ type Block struct {
 	// https://stackoverflow.com/questions/26327391/json-marshalstruct-returns
 	// Exporting these fields by capitalizing first letter
 	// `json....` are struct tags
-	T string `json:"T"`
-	// TODO: Change this to int once TAs fix
-	Created    float32    `json:"created"`
+	T          string     `json:"T"`
+	Created    int64      `json:"created"`
 	Miner      string     `json:"miner"`
 	Nonce      string     `json:"nonce"`
 	Note       string     `json:"note"`
@@ -29,14 +29,10 @@ type Block struct {
 	Type       string     `json:"type"`
 }
 
-var hash, _ = blake2s.New256(nil)
-var connection, err = net.Dial("tcp", "localhost:19000")
-var target_block Block
-var new_block = make(chan Block)
-var leading_nonce = ""
-
-func mine() {
+func mine(connection net.Conn, target_block Block, new_block <-chan Block) {
+	var hash, _ = blake2s.New256(nil)
 	var iter int64 = 0
+	var leading_nonce = ""
 	for {
 		select {
 		case block := <-new_block:
@@ -61,7 +57,7 @@ func mine() {
 			iter_string := strconv.FormatInt(iter, 16)
 			target_block.Nonce = leading_nonce + strings.Repeat("0", 15-len(iter_string)) + iter_string
 			iter += 1
-			if iter%100000 == 0 {
+			if iter%5000000 == 0 {
 				fmt.Printf("Iteration: %d Nonce: %s\n", iter, target_block.Nonce)
 			}
 		}
@@ -69,6 +65,12 @@ func mine() {
 }
 
 func listen_and_update() {
+	var connection, err = net.Dial("tcp", "149.28.223.2:19000")
+	if err != nil {
+		panic(err)
+	}
+	var new_block = make(chan Block)
+	go mine(connection, Block{}, new_block)
 	buf := make([]byte, 4096)
 	for {
 		messageLen, err := connection.Read(buf)
@@ -88,10 +90,8 @@ func listen_and_update() {
 }
 
 func main() {
-	if err != nil {
-		panic(err)
+	for i := 0; i < runtime.NumCPU(); i++ {
+		go listen_and_update()
 	}
-	go listen_and_update()
-	go mine()
 	time.Sleep(50 * time.Hour)
 }

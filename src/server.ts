@@ -17,6 +17,7 @@ import { get_from_db, put_in_db } from "./util/object_database";
 import { MarabuObject } from "./protocol/messaging/messages/objects/object_type";
 import { create_coinbase_transaction } from "./scripts/mine";
 import { Block } from "./protocol/messaging/messages/objects/block";
+import { get_from_height_db } from "./util/height_database";
 
 const PROD_DIFFICULTY = "00000000abc00000000000000000000000000000000000000000000000000000"
 
@@ -134,11 +135,21 @@ for(const peer of blockchain_state.get_peers().slice(0, 10)) {
     marabu_client_socket.socket.on("error", ()=>{console.log(`Wasn't able to connect to a client at ${host_ip}:${port}.`)})
 }
 
+// Did this way for cleanliness
+let self_client = new Socket()
+self_client.connect({ port: 18018, host: "localhost" }, () => {
+    self_client.write(JSON.stringify({"type": "hello",  "version": "0.9.0", "agent": "Self Client"}) + "\n")
+})
+
+function send_message_to_self(message) {
+    self_client.write(message)
+}
+
 let golang_server = new Server()
 const GOLANG_PORT = 19000
 golang_server.listen(GOLANG_PORT, () => `Server also listening on port ${GOLANG_PORT}`)
 golang_server.on("connection", function(socket : Socket) {
-    blockchain_state.golang_socket = socket
+    blockchain_state.golang_sockets.add(socket)
     console.log("Received golang connection\n")
     // Copy pasted for now....
     let starting_nonce : string = (Math.random()*Math.pow(2, 256)).toString(16)
@@ -149,7 +160,7 @@ golang_server.on("connection", function(socket : Socket) {
     put_in_db(coinbase_objectid, coinbase_txn).then(() => gossip(create_i_have_object_message, this.blockchain_state, coinbase_objectid))
     let new_block : Block = {
         type: "block",
-        txids: [coinbase_objectid],
+        txids: [coinbase_objectid, "eaa145ad59622ab3e27e8ae3347232062f0284e7b47d0f7194ce7c8664069f0a"],
         nonce: starting_nonce,
         previd: blockchain_state.chaintip,
         created: Date.now() / 1000,
@@ -161,7 +172,13 @@ golang_server.on("connection", function(socket : Socket) {
     socket.write(JSON.stringify(new_block))
     // Assume non-fragmented complete data
     socket.on("data", function(data : Buffer) {
-        let block = JSON.parse(data.toString("utf-8"))
-        gossip(create_object_message, blockchain_state, block)
+        let block : Block = JSON.parse(data.toString("utf-8"))
+        // This will lead to gossip
+        console.log(`Sending object message to self`)
+        send_message_to_self(JSON.stringify({"object": block, "type": "object"}) + "\n")
     })
+})
+
+golang_server.on("close", (socket : Socket) => {
+    blockchain_state.golang_sockets.delete(socket)
 })

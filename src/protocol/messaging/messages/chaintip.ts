@@ -20,17 +20,18 @@ class ChaintipMessage extends Message {
     }
     async _perform_validated_receive() {
         // If you already have the chaintip in database, you have already validated so set to new tip (if longest)
-        if(await exists_in_db(this.obj.blockid)) {
-            let new_height = await get_from_height_db(this.obj.blockid)
-            if(new_height > this.blockchain_state.chain_length) {
-                this.blockchain_state.chain_length = new_height
-                this.blockchain_state.chaintip = this.obj.blockid
-            }    
-        }
+        // if(await exists_in_db(this.obj.blockid)) {
+        //     let new_height = await get_from_height_db(this.obj.blockid)
+        //     if(new_height > this.blockchain_state.chain_length) {
+        //         this.blockchain_state.chain_length = new_height
+        //         this.blockchain_state.chaintip = this.obj.blockid
+        //         // Also need to update mempool state
+        //     }    
+        // }
         // Run get object on that chaintip
-	else {
-            create_get_object_message(this.socket, this.blockchain_state, this.obj.blockid).run_send_actions()
-	}
+        // else {
+        create_get_object_message(this.socket, this.blockchain_state, this.obj.blockid).run_send_actions()
+        // }
     }
 }
 

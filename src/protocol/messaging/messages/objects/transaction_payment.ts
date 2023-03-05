@@ -49,6 +49,7 @@ class TransactionPaymentObject extends MarabuObject {
 
             // Check if transaction is valid wrt mempool state
             if (!this.blockchain_state.mempool_state.has(canonicalize(input.outpoint))) {
+                console.log("Mempool state ", this.blockchain_state.mempool_state);
                 (new ErrorMessage(this.socket, "INVALID_TX_OUTPOINT", `Not valid according to our mempool`)).send()
                 console.log("[transaction_payment] Transaction ", MarabuObject.get_object_id(this.obj), " is not valid in mempool")
                 valid_in_mempool = false
@@ -94,6 +95,7 @@ class TransactionPaymentObject extends MarabuObject {
             // Try to add to the mempool, if successful, gossip
             for(const input of this.obj.inputs) {
                 if (!this.blockchain_state.mempool_state.has(canonicalize(input.outpoint))) {
+                    console.log("Mempool state 2: ", this.blockchain_state.mempool_state);
                     (new ErrorMessage(this.socket, "INVALID_TX_OUTPOINT", `Not valid according to our mempool`)).send()
                     return false
                 }

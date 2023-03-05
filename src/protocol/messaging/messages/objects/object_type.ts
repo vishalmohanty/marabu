@@ -19,6 +19,10 @@ abstract class MarabuObject {
 
     abstract _verify() : Promise<Boolean>;
 
+    async post_receive_actions() {
+        
+    }
+
     static get_object_id(obj : any) : string {
         let raw_object_string : string = canonicalize(obj)
         let h = createHash("blake2s")
@@ -50,12 +54,17 @@ abstract class MarabuObject {
     async run_receive() : Promise<Boolean> {
         if(await exists_in_db(MarabuObject.get_object_id(this.obj))) {
             // Already dealt with, no need to process again
+            await this.post_receive_actions()
             return false
         }
         if(!await this._verify()) {
             return false
         }
-        if(!await this.add_object()) {
+
+        let added_to_db = await this.add_object()
+        // Assumes object in db
+        await this.post_receive_actions()
+        if(!added_to_db) {
             return false
         }
         return true

@@ -10,7 +10,7 @@ class BlockchainState {
     objectid_handled : Set<String>
     mempool: Array<string>
     mempool_state: Set<string>
-    golang_socket : Socket
+    golang_sockets : Set<Socket>
     constructor(backing_file_name : string) {
         this.peers = new NonvolatileState(backing_file_name, "peers")
         // Start out with genesis
@@ -19,7 +19,7 @@ class BlockchainState {
         this.objectid_handled = new Set()
         this.mempool = new Array<string>()
         this.mempool_state = new Set()
-        this.golang_socket = null
+        this.golang_sockets = new Set()
     }
     get_peers() : Array<string> {
         // TEMPORARY: Only solution peer
