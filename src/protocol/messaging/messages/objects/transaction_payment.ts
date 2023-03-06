@@ -56,7 +56,7 @@ class TransactionPaymentObject extends MarabuObject {
             }
         }
         // Verify conservation
-        let output_sum : number = this.obj.outputs.map((output) => output.value).reduce((prev, curr) => prev+curr)
+        let output_sum : number = this.obj.outputs.length ? this.obj.outputs.map((output) => output.value).reduce((prev, curr) => prev+curr) : 0
         if(input_sum < output_sum) {
             (new ErrorMessage(this.socket, "INVALID_TX_CONSERVATION", `Input sum is ${input_sum}, output sum is ${output_sum}`)).send()
             return false
@@ -65,7 +65,7 @@ class TransactionPaymentObject extends MarabuObject {
         if(valid_in_mempool) {
             const txid: string = MarabuObject.get_object_id(this.obj)
             // Add txn to mempool after it is validated
-            this.blockchain_state.mempool.push(txid)
+            this.blockchain_state.add_to_mempool(txid)
 
             // Add the outpoints of this transaction to the mempool state
             const new_utxos: Set<string> = getTransactionOutpoints(this.obj, txid)
@@ -103,7 +103,7 @@ class TransactionPaymentObject extends MarabuObject {
 
             const txid: string = MarabuObject.get_object_id(this.obj)
             // Add txn to mempool after it is validated
-            this.blockchain_state.mempool.push(txid)
+            this.blockchain_state.add_to_mempool(txid)
 
             // Add the outpoints of this transaction to the mempool state
             const new_utxos: Set<string> = getTransactionOutpoints(this.obj, txid)

@@ -16,7 +16,7 @@ import { create_object_message } from "./protocol/messaging/messages/object";
 import { get_from_db, put_in_db } from "./util/object_database";
 import { MarabuObject } from "./protocol/messaging/messages/objects/object_type";
 import { create_coinbase_transaction } from "./scripts/mine";
-import { Block } from "./protocol/messaging/messages/objects/block";
+import { Block, BlockObject } from "./protocol/messaging/messages/objects/block";
 import { get_from_height_db } from "./util/height_database";
 
 const PROD_DIFFICULTY = "00000000abc00000000000000000000000000000000000000000000000000000"
@@ -150,26 +150,8 @@ const GOLANG_PORT = 19000
 golang_server.listen(GOLANG_PORT, () => `Server also listening on port ${GOLANG_PORT}`)
 golang_server.on("connection", function(socket : Socket) {
     blockchain_state.golang_sockets.add(socket)
-    console.log("Received golang connection\n")
-    // Copy pasted for now....
-    let starting_nonce : string = (Math.random()*Math.pow(2, 256)).toString(16)
-    console.log(`Starting nonce ${starting_nonce}`)
-    starting_nonce = "0".repeat(64-starting_nonce.length) + starting_nonce
-    let coinbase_txn = create_coinbase_transaction({height: blockchain_state.chain_length+1, outputs: [{pubkey: "e54f6be504b8707bdea7e2a95bb10d17f378c761cc4409b3fdcca38d23646ed5", value: 50000000000000}]})
-    let coinbase_objectid = MarabuObject.get_object_id(coinbase_txn)
-    put_in_db(coinbase_objectid, coinbase_txn).then(() => gossip(create_i_have_object_message, this.blockchain_state, coinbase_objectid))
-    let new_block : Block = {
-        type: "block",
-        txids: [coinbase_objectid, "eaa145ad59622ab3e27e8ae3347232062f0284e7b47d0f7194ce7c8664069f0a"],
-        nonce: starting_nonce,
-        previd: blockchain_state.chaintip,
-        created: Date.now() / 1000,
-        T: PROD_DIFFICULTY,
-        miner: "Definitely honest!",
-        note: "Plz work",
-        studentids: ["vmohanty", "sudeepn"]
-    }
-    socket.write(JSON.stringify(new_block))
+    console.log("Received golang connection, sending over a block to mine on.\n")
+    BlockObject.sendNewBlockOver(socket, blockchain_state, blockchain_state.mempool)
     // Assume non-fragmented complete data
     socket.on("data", function(data : Buffer) {
         let block : Block = JSON.parse(data.toString("utf-8"))

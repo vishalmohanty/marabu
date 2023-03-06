@@ -23,9 +23,7 @@ class MempoolMessage extends Message {
     async _perform_validated_receive() {
         for (const txid of this.obj.txids) {
             // Run get_object if the transaction is not in DB
-            if(!await exists_in_db(txid)) {
-                create_get_object_message(this.socket, this.blockchain_state, txid).run_send_actions()
-            }
+            create_get_object_message(this.socket, this.blockchain_state, txid).run_send_actions()
         }
     }
 }

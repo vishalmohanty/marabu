@@ -1,4 +1,5 @@
 import { Socket } from "net";
+import { BlockObject } from "../messaging/messages/objects/block";
 import { TransactionPointer } from "../messaging/messages/objects/building_blocks";
 import { NonvolatileState } from "./nonvolatile";
 
@@ -30,6 +31,13 @@ class BlockchainState {
         if (!peers.has(peer)) {
             peers.add(peer)
             this.peers.set(Array.from(peers))
+        }
+    }
+    add_to_mempool(txid : string) {
+        this.mempool.push(txid)
+        // Update all golang miners for new mempool
+        for(const golang_socket of this.golang_sockets) {
+            BlockObject.sendNewBlockOver(golang_socket, this, this.mempool)
         }
     }
 }

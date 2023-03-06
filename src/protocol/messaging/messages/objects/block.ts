@@ -13,6 +13,8 @@ import { canonicalize } from "json-canonicalize";
 import { config } from "../../../../config";
 import { create_coinbase_transaction } from "../../../../scripts/mine";
 import { create_i_have_object_message } from "../ihaveobject";
+import { BlockchainState } from "../../../state/blockchain_state";
+import { Socket } from "net";
 
 const GENESIS_ID = "0000000052a0e645eca917ae1c196e0d0a4fb756747f29ef52594d68484bb5e2"
 const TRANSACTION_TIMEOUT : number = 100 // Timeout to get the txn's from a peer
@@ -222,6 +224,9 @@ class BlockObject extends MarabuObject {
             // Empty the mempool
             let old_mempool: Array<string> = structuredClone(this.blockchain_state.mempool)
             this.blockchain_state.mempool = new Array<string>()
+            for(let golang_socket of this.blockchain_state.golang_sockets) {
+                BlockObject.sendNewBlockOver(golang_socket, this.blockchain_state, [])
+            }
             
             // When chaintip is updated, set the mempool_state to the UTXO set
             this.blockchain_state.mempool_state = structuredClone(utxo_set)
@@ -265,26 +270,8 @@ class BlockObject extends MarabuObject {
             // Send golang miner code new block to mine on top off
             if(this.blockchain_state.golang_sockets != null) {
                 for(let golang_socket of this.blockchain_state.golang_sockets) {
-                    let starting_nonce : string = (Math.random()*Math.pow(2, 256)).toString(16)
-                    console.log(`Starting nonce ${starting_nonce}`)
-                    starting_nonce = "0".repeat(64-starting_nonce.length) + starting_nonce
-                    let coinbase_txn = create_coinbase_transaction({height: new_height, outputs: [{pubkey: "e54f6be504b8707bdea7e2a95bb10d17f378c761cc4409b3fdcca38d23646ed5", value: 50000000000000}]})
-                    let coinbase_objectid = MarabuObject.get_object_id(coinbase_txn)
-                    await put_in_db(coinbase_objectid, coinbase_txn)
-                    gossip(create_i_have_object_message, this.blockchain_state, coinbase_objectid)
-                    let new_block : Block = {
-                        type: "block",
-                        txids: [coinbase_objectid, "eaa145ad59622ab3e27e8ae3347232062f0284e7b47d0f7194ce7c8664069f0a"],
-                        nonce: starting_nonce,
-                        previd: blockId,
-                        created: Date.now() / 1000,
-                        T: PROD_DIFFICULTY,
-                        miner: "Definitely honest!",
-                        note: "Plz work",
-                        studentids: ["vmohanty", "sudeepn"]
-                    }
-                    console.log("Sending golang miner new block: ", new_block)
-                    golang_socket.write(JSON.stringify(new_block))
+                    console.log(`Received new chaintip, sending new block over for mining.`)
+                    BlockObject.sendNewBlockOver(golang_socket, this.blockchain_state, this.blockchain_state.mempool)
                 }
             }
         }
@@ -335,10 +322,40 @@ class BlockObject extends MarabuObject {
                 return
             }
         }
-        this.blockchain_state.mempool.push(txid)
+        this.blockchain_state.add_to_mempool(txid)
         const new_utxos: Set<string> = getTransactionOutpoints(txn, txid)
         new_utxos.forEach(utxo => this.blockchain_state.mempool_state.add(utxo))
         console.log("[block] Added txn ", txid, " to mempool.\nCurrent mempool: ", this.blockchain_state.mempool, "\nCurrent mempool state: ", this.blockchain_state.mempool_state)
+    }
+
+    static async sendNewBlockOver(golang_socket : Socket, blockchain_state : BlockchainState, txids : Array<string>) {
+        let starting_nonce : string = (Math.random()*Math.pow(2, 256)).toString(16)
+        starting_nonce = "0".repeat(64-starting_nonce.length) + starting_nonce
+        let coinbase_txn = create_coinbase_transaction({height: blockchain_state.chain_length+1, outputs: [{pubkey: "e54f6be504b8707bdea7e2a95bb10d17f378c761cc4409b3fdcca38d23646ed5", value: 50000000000000}]})
+        let coinbase_objectid = MarabuObject.get_object_id(coinbase_txn)
+
+        if(!await exists_in_db(coinbase_objectid)) {
+            await put_in_db(coinbase_objectid, coinbase_txn)
+            gossip(create_i_have_object_message, blockchain_state, coinbase_objectid)
+        }
+        
+        let transaction_ids = new Array<string>()
+        transaction_ids.push(coinbase_objectid)
+        transaction_ids.push(...txids)
+
+        let new_block : Block = {
+            type: "block",
+            txids: transaction_ids,
+            nonce: starting_nonce,
+            previd: blockchain_state.chaintip,
+            created: Math.floor(Date.now() / 1000),
+            T: PROD_DIFFICULTY,
+            miner: "Definitely honest!",
+            note: "Knock knock",
+            studentids: ["vmohanty", "sudeepn"]
+        }
+        console.log(`Sending new block. Starting nonce ${starting_nonce}`, new_block)
+        golang_socket.write(JSON.stringify(new_block))
     }
 }
 
