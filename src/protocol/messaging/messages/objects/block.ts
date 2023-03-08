@@ -351,7 +351,7 @@ class BlockObject extends MarabuObject {
             created: Math.floor(Date.now() / 1000),
             T: PROD_DIFFICULTY,
             miner: "Definitely honest!",
-            note: "Knock knock",
+            note: "Canoe give me 100 bu ;)",
             studentids: ["vmohanty", "sudeepn"]
         }
         console.log(`Sending new block. Starting nonce ${starting_nonce}`, new_block)
