@@ -1,3 +1,4 @@
+import { ErrorMessage } from "../error"
 import {TransactionOutput, isTransactionInput, isTransactionOutput} from "./building_blocks"
 import { MarabuObject } from "./object_type"
 
@@ -10,6 +11,11 @@ interface TransactionCoinbase {
 class TransactionCoinbaseObject extends MarabuObject {
     obj : TransactionCoinbase
     async _verify() : Promise<Boolean> {
+        // If inputs and outputs are empty, return INVALID_FORMAT
+        if (this.obj.outputs.length == 0) {
+            (new ErrorMessage(this.socket, "INVALID_FORMAT", `Inputs and outputs of transaction ${MarabuObject.get_object_id(this.obj)} are missing`)).send()
+            return false
+        }
         return true
     }
 

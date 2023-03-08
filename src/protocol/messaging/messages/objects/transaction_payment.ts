@@ -15,6 +15,13 @@ interface TransactionPayment {
 class TransactionPaymentObject extends MarabuObject {
     obj : TransactionPayment
     async _verify() : Promise<Boolean> {
+
+        // If inputs and outputs are empty, return INVALID_FORMAT
+        if (this.obj.inputs.length == 0 && this.obj.outputs.length == 0) {
+            (new ErrorMessage(this.socket, "INVALID_FORMAT", `Inputs and outputs of transaction ${MarabuObject.get_object_id(this.obj)} are missing`)).send()
+            return false
+        }
+
         let valid_in_mempool = true
         let transaction_deepcopy : TransactionPayment = JSON.parse(JSON.stringify(this.obj))
         for(const input of transaction_deepcopy.inputs) {

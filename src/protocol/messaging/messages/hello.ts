@@ -18,7 +18,7 @@ class HelloMessage extends Message {
     _verify_message(): Boolean {
         // Checks 
         let version = this.obj.version;
-        if(!(version.slice(0, 4) == "0.9.") || isNaN(Number(version.slice(4)))) {
+        if(!(version.slice(0, 5) == "0.10.") || isNaN(Number(version.slice(5)))) {
             (new ErrorMessage(this.socket, "INVALID_FORMAT", "Unexpected version number.")).send()
             return false
         }
@@ -30,7 +30,7 @@ class HelloMessage extends Message {
 }
 
 function create_hello_message(socket : MarabuSocket, blockchain_state : BlockchainState) {
-    return new HelloMessage(socket, {"type": "hello",  "version": "0.9.0", "agent": NAME}, blockchain_state)
+    return new HelloMessage(socket, {"type": "hello",  "version": "0.10.0", "agent": NAME}, blockchain_state)
 }
 
 export {HelloMessage, create_hello_message}

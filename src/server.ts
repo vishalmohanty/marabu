@@ -138,7 +138,7 @@ for(const peer of blockchain_state.get_peers().slice(0, 10)) {
 // Did this way for cleanliness
 let self_client = new Socket()
 self_client.connect({ port: 18018, host: "localhost" }, () => {
-    self_client.write(JSON.stringify({"type": "hello",  "version": "0.9.0", "agent": "Self Client"}) + "\n")
+    self_client.write(JSON.stringify({"type": "hello",  "version": "0.10.0", "agent": "Self Client"}) + "\n")
 })
 
 function send_message_to_self(message) {
