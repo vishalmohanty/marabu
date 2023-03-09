@@ -351,11 +351,11 @@ class BlockObject extends MarabuObject {
             created: Math.floor(Date.now() / 1000),
             T: PROD_DIFFICULTY,
             miner: "Definitely honest!",
-            note: "Canoe give me 100 bu ;)",
+            note: "hello!",
             studentids: ["vmohanty", "sudeepn"]
         }
         console.log(`Sending new block. Starting nonce ${starting_nonce}`, new_block)
-        golang_socket.write(JSON.stringify(new_block))
+        golang_socket.write(JSON.stringify(new_block) + "\n")
     }
 }
 
