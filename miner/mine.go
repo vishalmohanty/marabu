@@ -70,7 +70,7 @@ func listen_and_update() {
 			fmt.Printf("%d %s\n", messageLen, buf[:messageLen])
 			all_jsons := strings.Split(string(buf[:messageLen]), "\n")
 			// In case of multiple JSONs, pick the latest one
-			err = json.Unmarshal([]byte(all_jsons[len(all_jsons)-1]), &new_block_from_js)
+			err = json.Unmarshal([]byte(all_jsons[len(all_jsons)-2]), &new_block_from_js)
 			if err != nil {
 				panic(err)
 			}
